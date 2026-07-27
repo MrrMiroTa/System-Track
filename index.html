@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="km">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយ - Payment Tracker</title>
+    <link rel="icon" href="uzita.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <div>
+                <h1>ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុ (Multi-Currency Tracker)</h1>
+                <p class="subtitle">តាមដានចំណូល និង ចំណាយប្រចាំថ្ងៃ</p>
+            </div>
+            <button class="btn-export" onclick="window.print()">បោះពុម្ភរបាយការណ៍ជា PDF (Export PDF)</button>
+        </header>
+
+        <!-- Search / Filter Bar by Date Range -->
+        <div class="filter-bar">
+            <span>ស្វែងរកតាមកាលបរិច្ឆេទ៖</span>
+            <div class="filter-group">
+                <label for="filter-start-date">ចាប់ពីថ្ងៃ៖</label>
+                <input type="text" id="filter-start-date" placeholder="ឧ. 30-06-26 ឬ 2026-07-24" maxlength="20">
+            </div>
+            <div class="filter-group">
+                <label for="filter-end-date">ដល់ថ្ងៃ៖</label>
+                <input type="text" id="filter-end-date" placeholder="ឧ. 30-06-26 ឬ 2026-07-24" maxlength="20">
+            </div>
+            <button class="btn-clear">បង្ហាញទាំងអស់ (Reset)</button>
+        </div>
+
+        <!-- Summary Metrics Box Display -->
+        <div class="dashboard-grid">
+            <div class="card balance">
+                <h3>សមតុល្យសរុប (Total Balance)</h3>
+                <div class="multi-currency-row"><span>KHR (រៀល):</span>
+                    <div class="amount" id="balance-khr">0 ៛</div>
+                </div>
+                <div class="multi-currency-row"><span>USD (ដុល្លារ):</span>
+                    <div class="amount" id="balance-usd">$0.00</div>
+                </div>
+            </div>
+            <div class="card income">
+                <h3>ចំណូលសរុប (Total Income)</h3>
+                <div class="multi-currency-row"><span>KHR (រៀល):</span>
+                    <div class="amount" id="income-khr">0 ៛</div>
+                </div>
+                <div class="multi-currency-row"><span>USD (ដុល្លារ):</span>
+                    <div class="amount" id="income-usd">$0.00</div>
+                </div>
+            </div>
+            <div class="card expense">
+                <h3>ចំណាយសរុប (Total Expense)</h3>
+                <div class="multi-currency-row"><span>KHR (រៀល):</span>
+                    <div class="amount" id="expense-khr">0 ៛</div>
+                </div>
+                <div class="multi-currency-row"><span>USD (ដុល្លារ):</span>
+                    <div class="amount" id="expense-usd">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Data Creation Area Container -->
+            <div class="card">
+                <h2 class="form-title">បន្ថែមប្រតិបត្តិការថ្មី</h2>
+                <form id="transaction-form">
+                    <div class="form-group">
+                        <label for="title">បរិយាយ / ឈ្មោះប្រតិបត្តិការ</label>
+                        <input type="text" id="title" required placeholder="ឧ. បើកប្រាក់ខែ, ទិញម្ហូប...">
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">ចំនួនទឹកប្រាក់</label>
+                        <div class="amount-input-group">
+                            <input type="text" id="amount" step="any" required placeholder="0.00">
+                            <select id="currency" required>
+                                <option value="KHR">រៀល (៛)</option>
+                                <option value="USD">ដុល្លារ ($)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="type">ប្រភេទប្រតិបត្តិការ</label>
+                        <select id="type" required>
+                            <option value="income">ចំណូល (Income)</option>
+                            <option value="expense">ចំណាយ (Expense)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">ប្រភេទក្រុម (Category)</label>
+                        <input type="text" id="category" required placeholder="ឧ. ម្ហូបអាហារ, ផ្ទះបាយ, ធ្វើដំណើរ...">
+                    </div>
+                    <div class="form-group">
+                        <label for="date">កាលបរិច្ឆេទ</label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <button type="submit" class="btn-submit">រក្សាទុកទិន្នន័យ (Save)</button>
+                </form>
+            </div>
+
+            <!-- Ledger Record Presentation Component -->
+            <div class="table-container">
+                <div class="loader-wrapper" id="table-loader">
+                    <div class="spinner"></div>
+                    <p>កំពុងទាញយកទិន្នន័យ...</p>
+                </div>
+                <div class="table-scroll">
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>កាលបរិច្ឆេទ</th>
+                                <th>បរិយាយ</th>
+                                <th>ក្រុម</th>
+                                <th>ប្រភេទ</th>
+                                <th>ចំនួនទឹកប្រាក់</th>
+                                <th>ប្រវត្តិ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-rows">
+                            <!-- Content loaded dynamically from database -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-inner">
+                <span class="footer-brand">Payment Tracker By <a target="_blank" href="https://t.me/Dsophors">UziTa</a></span>
+                <span class="footer-divider">|</span>
+                <span class="footer-text">ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុ</span>
+                <span class="footer-divider">|</span>
+                <span class="footer-copy">&copy; 2026 Payment Tracker. All rights reserved.</span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const API_URL = 'api.php';
+        let allTransactions = [];
+
+        const form = document.getElementById('transaction-form');
+
+        // Dashboard metric definitions
+        const balanceKhrEl = document.getElementById('balance-khr');
+        const balanceUsdEl = document.getElementById('balance-usd');
+        const incomeKhrEl = document.getElementById('income-khr');
+        const incomeUsdEl = document.getElementById('income-usd');
+        const expenseKhrEl = document.getElementById('expense-khr');
+        const expenseUsdEl = document.getElementById('expense-usd');
+
+        const tableRowsEl = document.getElementById('transaction-rows');
+        const startDateInput = document.getElementById('filter-start-date');
+        const endDateInput = document.getElementById('filter-end-date');
+
+        document.getElementById('date').valueAsDate = new Date();
+
+        function formatCurrency(value, currency) {
+            if (currency === 'KHR') {
+                return new Intl.NumberFormat('km-KH', {
+                    style: 'currency', currency: 'KHR', minimumFractionDigits: 0
+                }).format(value).replace('KHR', '៛');
+            } else {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency', currency: 'USD'
+                }).format(value);
+            }
+        }
+
+        async function fetchDashboardData() {
+            const loader = document.getElementById('table-loader');
+            loader.classList.add('active');
+            tableRowsEl.innerHTML = '';
+
+            try {
+                const response = await fetch(API_URL);
+
+                if (response.status === 304) {
+                    applyDateFilter();
+                    loader.classList.remove('active');
+                    return;
+                }
+
+                const data = await response.json();
+                allTransactions = Array.isArray(data) ? data : [];
+
+                if (data.error) {
+                    tableRowsEl.innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(data.error)}</td></tr>`;
+                    return;
+                }
+
+                applyDateFilter();
+            } catch (error) {
+                tableRowsEl.innerHTML = `<tr><td colspan="6" class="empty-state">កំពុងមានបញ្ហា​ក្នុងការតភ្ជាប់។ សូមព្យាយាមម្តងទៀត។</td></tr>`;
+            } finally {
+                loader.classList.remove('active');
+            }
+        }
+
+        function debounce(fn, delay) {
+            let timer;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        const debouncedFilter = debounce(applyDateFilter, 250);
+        const debouncedClear = debounce(clearDateFilter, 250);
+
+        startDateInput.addEventListener('input', debouncedFilter);
+        endDateInput.addEventListener('input', debouncedFilter);
+
+        document.querySelector('.btn-clear').addEventListener('click', debouncedClear);
+
+        function parseInputDate(value) {
+            value = value.trim();
+            if (!value) return '';
+
+            const normalized = value.replace(/\//g, '-');
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+                return normalized;
+            }
+
+            const parts = normalized.split('-');
+            if (parts.length === 3) {
+                const [dd, mm, yy] = parts;
+                if (dd.length === 2 && mm.length === 2 && yy.length === 2) {
+                    const yyyy = parseInt(yy) > 70 ? '19' + yy : '20' + yy;
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+                if (dd.length === 2 && mm.length === 2 && yy.length === 4) {
+                    return `${yy}-${mm}-${dd}`;
+                }
+            }
+
+            return '';
+        }
+
+        function applyDateFilter() {
+            const startDate = parseInputDate(startDateInput.value);
+            const endDate = parseInputDate(endDateInput.value);
+
+            const filtered = allTransactions.filter(tx => {
+                if (startDate && tx.date < startDate) return false;
+                if (endDate && tx.date > endDate) return false;
+                return true;
+            });
+
+            renderDashboard(filtered);
+        }
+
+        function clearDateFilter() {
+            startDateInput.value = '';
+            endDateInput.value = '';
+            renderDashboard(allTransactions);
+        }
+
+        function renderDashboard(transactions) {
+            let incKhr = 0, expKhr = 0, incUsd = 0, expUsd = 0;
+            let rows = [];
+
+            if (transactions.length === 0) {
+                tableRowsEl.innerHTML = `<tr><td colspan="6" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
+                incomeKhrEl.textContent = formatCurrency(0, 'KHR');
+                expenseKhrEl.textContent = formatCurrency(0, 'KHR');
+                balanceKhrEl.textContent = formatCurrency(0, 'KHR');
+                incomeUsdEl.textContent = formatCurrency(0, 'USD');
+                expenseUsdEl.textContent = formatCurrency(0, 'USD');
+                balanceUsdEl.textContent = formatCurrency(0, 'USD');
+                return;
+            }
+
+            transactions.forEach(tx => {
+                const amt = parseFloat(tx.amount);
+                const isIncome = tx.type === 'income';
+                const curr = tx.currency || 'KHR';
+
+                if (curr === 'KHR') {
+                    if (isIncome) incKhr += amt; else expKhr += amt;
+                } else {
+                    if (isIncome) incUsd += amt; else expUsd += amt;
+                }
+
+                rows.push(`
+                    <tr data-id="${tx.id}">
+                        <td>${tx.date}</td>
+                        <td><strong>${escapeHtml(tx.title)}</strong></td>
+                        <td>${escapeHtml(tx.category)}</td>
+                        <td><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
+                        <td class="${isIncome ? 'text-income' : 'text-expense'}">${formatCurrency(amt, curr)}</td>
+                        <td>${tx.updated_at === null
+                        ? `<button class="btn-edit" onclick="enableEdit(${tx.id})">កែសម្រួល</button>`
+                        : '<span class="disabled-text">បានកែសម្រួលរួចហើយ</span>'}</td>
+                    </tr>
+                `);
+            });
+
+            tableRowsEl.innerHTML = rows.join('');
+
+            incomeKhrEl.textContent = formatCurrency(incKhr, 'KHR');
+            expenseKhrEl.textContent = formatCurrency(expKhr, 'KHR');
+            balanceKhrEl.textContent = formatCurrency(incKhr - expKhr, 'KHR');
+
+            incomeUsdEl.textContent = formatCurrency(incUsd, 'USD');
+            expenseUsdEl.textContent = formatCurrency(expUsd, 'USD');
+            balanceUsdEl.textContent = formatCurrency(incUsd - expUsd, 'USD');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'កំពុងរក្សាទុក...';
+
+            const payload = {
+                title: document.getElementById('title').value,
+                amount: document.getElementById('amount').value,
+                currency: document.getElementById('currency').value,
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value,
+                date: document.getElementById('date').value
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    form.reset();
+                    document.getElementById('date').valueAsDate = new Date();
+                    fetchDashboardData();
+                } else {
+                    alert(result.error || "Failed to save records.");
+                }
+            } catch (error) {
+                console.error("Transmission writing fault encountered:", error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function enableEdit(id) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            const tx = allTransactions.find(t => t.id === id);
+            if (!row || !tx) return;
+
+            row.innerHTML = `
+                <td class="edit-cell"><input type="date" class="edit-input" id="edit-date-${id}" value="${tx.date}"></td>
+                <td class="edit-cell"><input type="text" class="edit-input" id="edit-title-${id}" value="${escapeHtml(tx.title)}"></td>
+                <td class="edit-cell"><input type="text" class="edit-input" id="edit-category-${id}" value="${escapeHtml(tx.category)}"></td>
+                <td class="edit-cell">
+                    <select class="edit-select" id="edit-type-${id}">
+                        <option value="income" ${tx.type === 'income' ? 'selected' : ''}>ចំណូល</option>
+                        <option value="expense" ${tx.type === 'expense' ? 'selected' : ''}>ចំណាយ</option>
+                    </select>
+                </td>
+                <td class="edit-cell">
+                    <div class="edit-amount-group">
+                        <input type="text" class="edit-input" id="edit-amount-${id}" step="any" value="${tx.amount}">
+                        <select class="edit-select" id="edit-currency-${id}">
+                            <option value="KHR" ${tx.currency === 'KHR' ? 'selected' : ''}>៛</option>
+                            <option value="USD" ${tx.currency === 'USD' ? 'selected' : ''}>$</option>
+                        </select>
+                    </div>
+                </td>
+                <td class="edit-cell">
+                    <div class="edit-actions">
+                        <button class="btn-save" onclick="saveEdit(${id})">រក្សាទុក</button>
+                        <button class="btn-cancel" onclick="cancelEdit()">បោះបង់</button>
+                    </div>
+                </td>
+            `;
+        }
+
+        async function saveEdit(id) {
+            const payload = {
+                title: document.getElementById(`edit-title-${id}`).value,
+                amount: document.getElementById(`edit-amount-${id}`).value,
+                currency: document.getElementById(`edit-currency-${id}`).value,
+                type: document.getElementById(`edit-type-${id}`).value,
+                category: document.getElementById(`edit-category-${id}`).value,
+                date: document.getElementById(`edit-date-${id}`).value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    fetchDashboardData();
+                } else {
+                    alert(result.error || "Failed to update transaction.");
+                    cancelEdit();
+                }
+            } catch (error) {
+                console.error("Update failed:", error);
+                alert("Update failed. Please try again.");
+                cancelEdit();
+            }
+        }
+
+        function cancelEdit() {
+            fetchDashboardData();
+        }
+
+        fetchDashboardData();
+    </script>
+</body>
+
+</html>
