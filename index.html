@@ -11,14 +11,83 @@
 
 <body>
 
-    <div class="container">
+    <!-- Authentication Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2 id="auth-title">Login</h2>
+                <p id="auth-subtitle">Sign in to your account</p>
+            </div>
+
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" required placeholder="Enter your username">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password (6 digits)</label>
+                    <input type="password" id="login-password" required placeholder="Enter 6-digit password" maxlength="6">
+                </div>
+                <div id="login-error" class="auth-error" style="display:none;"></div>
+                <button type="submit" class="btn-submit">Login</button>
+            </form>
+
+            <form id="signup-form" class="auth-form" style="display:none;">
+                <div class="form-group">
+                    <label for="signup-username">Username</label>
+                    <input type="text" id="signup-username" required placeholder="Choose a username (3+ chars)">
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Password (6 digits)</label>
+                    <input type="password" id="signup-password" required placeholder="Enter 6-digit password" maxlength="6">
+                </div>
+                <div id="signup-error" class="auth-error" style="display:none;"></div>
+                <button type="submit" class="btn-submit">Create Account</button>
+            </form>
+
+            <div class="auth-switch">
+                <span id="auth-switch-text">Don't have an account?</span>
+                <button id="auth-switch-btn" class="btn-link">Sign Up</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="container" style="display:none;">
         <header>
             <div>
-                <h1>ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុ (Multi-Currency Tracker)</h1>
+                <h1>ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុ (Payment Tracker)</h1>
                 <p class="subtitle">តាមដានចំណូល និង ចំណាយប្រចាំថ្ងៃ</p>
             </div>
-            <button class="btn-export" onclick="window.print()">បោះពុម្ភរបាយការណ៍ជា PDF (Export PDF)</button>
+            <div class="header-actions">
+                <span id="user-badge" class="user-badge"></span>
+                <button class="btn-export" onclick="window.print()">បោះពុម្ភរបាយការណ៍ជា PDF (Export PDF)</button>
+                <button class="btn-logout" onclick="doLogout()">Logout</button>
+            </div>
         </header>
+
+        <!-- Admin Panel -->
+        <div id="admin-panel" class="admin-panel" style="display:none;">
+            <div class="card admin-card">
+                <h3>Admin Panel - User Management</h3>
+                <div class="table-container">
+                    <table id="admin-users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Password (6-digit)</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-users-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
 
         <!-- Search / Filter Bar by Date Range -->
         <div class="filter-bar">
@@ -133,9 +202,7 @@
         <footer class="app-footer">
             <div class="footer-inner">
                 <span class="footer-brand">Payment Tracker By <a target="_blank" href="https://t.me/Dsophors">UziTa</a></span>
-                <span class="footer-divider">|</span>
                 <span class="footer-text">ប្រព័ន្ធគ្រប់គ្រងហិរញ្ញវត្ថុ</span>
-                <span class="footer-divider">|</span>
                 <span class="footer-copy">&copy; 2026 Payment Tracker. All rights reserved.</span>
             </div>
         </footer>
@@ -427,7 +494,194 @@
             fetchDashboardData();
         }
 
-        fetchDashboardData();
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/auth-check`);
+                const data = await response.json();
+                if (data.authenticated) {
+                    showApp(data.user);
+                } else {
+                    showAuth();
+                }
+            } catch (error) {
+                showAuth();
+            }
+        }
+
+        function showAuth() {
+            document.getElementById('auth-overlay').style.display = 'flex';
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('signup-form').style.display = 'none';
+            document.getElementById('auth-title').textContent = 'Login';
+            document.getElementById('auth-subtitle').textContent = 'Sign in to your account';
+            document.getElementById('auth-switch-text').textContent = 'Don\'t have an account?';
+            document.getElementById('auth-switch-btn').textContent = 'Sign Up';
+            document.getElementById('auth-switch-btn').onclick = toggleAuthForm;
+        }
+
+        function showApp(user) {
+            document.getElementById('auth-overlay').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            const badge = document.getElementById('user-badge');
+            badge.textContent = `${user.username} (${user.role})`;
+            if (user.role === 'admin') {
+                document.getElementById('admin-panel').style.display = 'block';
+                fetchAdminUsers();
+            } else {
+                document.getElementById('admin-panel').style.display = 'none';
+            }
+        }
+
+        function toggleAuthForm() {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            if (loginForm.style.display === 'none') {
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                document.getElementById('auth-title').textContent = 'Login';
+                document.getElementById('auth-subtitle').textContent = 'Sign in to your account';
+                document.getElementById('auth-switch-text').textContent = 'Don\'t have an account?';
+                document.getElementById('auth-switch-btn').textContent = 'Sign Up';
+            } else {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                document.getElementById('auth-title').textContent = 'Sign Up';
+                document.getElementById('auth-subtitle').textContent = 'Create a new account';
+                document.getElementById('auth-switch-text').textContent = 'Already have an account?';
+                document.getElementById('auth-switch-btn').textContent = 'Login';
+            }
+            hideAuthErrors();
+        }
+
+        function hideAuthErrors() {
+            document.getElementById('login-error').style.display = 'none';
+            document.getElementById('signup-error').style.display = 'none';
+        }
+
+        function showAuthError(formType, message) {
+            const el = document.getElementById(formType === 'login' ? 'login-error' : 'signup-error');
+            el.textContent = message;
+            el.style.display = 'block';
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAuthErrors();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+            if (!username || !password) return;
+
+            try {
+                const response = await fetch(`${API_URL}/signin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showAuthError('login', data.error);
+                } else if (data.success) {
+                    showApp(data.user);
+                    fetchDashboardData();
+                }
+            } catch (error) {
+                showAuthError('login', 'Connection failed. Please try again.');
+            }
+        });
+
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAuthErrors();
+            const username = document.getElementById('signup-username').value.trim();
+            const password = document.getElementById('signup-password').value.trim();
+            if (!username || !password) return;
+
+            if (password.length !== 6 || !/^\d{6}$/.test(password)) {
+                showAuthError('signup', 'Password must be exactly 6 digits.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.error) {
+                    showAuthError('signup', data.error);
+                } else if (data.success) {
+                    document.getElementById('auth-title').textContent = 'Account Created';
+                    document.getElementById('auth-subtitle').textContent = 'Please login with your new account.';
+                    showAuthError('signup', '');
+                    toggleAuthForm();
+                }
+            } catch (error) {
+                showAuthError('signup', 'Connection failed. Please try again.');
+            }
+        });
+
+        function doLogout() {
+            fetch(`${API_URL}/logout`, { method: 'POST' }).finally(() => {
+                location.reload();
+            });
+        }
+
+        async function fetchAdminUsers() {
+            try {
+                const response = await fetch(`${API_URL}/admin/users`);
+                const users = await response.json();
+                const tbody = document.getElementById('admin-users-body');
+                tbody.innerHTML = '';
+                users.forEach(u => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${u.id}</td>
+                        <td><strong>${escapeHtml(u.username)}</strong></td>
+                        <td>••••••</td>
+                        <td><span class="badge ${u.role === 'admin' ? 'income' : 'expense'}">${u.role}</span></td>
+                        <td>${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
+                        <td><button class="btn-edit" onclick="resetAdminPassword(${u.id}, '${escapeHtml(u.username)}')">Reset Password</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Failed to fetch users:', error);
+            }
+        }
+
+        async function resetAdminPassword(userId, username) {
+            const newPassword = prompt(`Reset password for "${username}" to a new 6-digit password:`);
+            if (newPassword === null) return;
+            if (!/^\d{6}$/.test(newPassword)) {
+                alert('Password must be exactly 6 digits.');
+                return;
+            }
+            if (!confirm(`Set password for "${username}" to "${newPassword}"?`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/admin/reset-password?id=${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify({ password: newPassword })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Password reset successfully.');
+                } else {
+                    alert(data.error || 'Failed to reset password.');
+                }
+            } catch (error) {
+                alert('Failed to reset password. Please try again.');
+            }
+        }
+
+        if (document.querySelector('.btn-clear')) {
+            document.querySelector('.btn-clear').addEventListener('click', debouncedClear);
+        }
+
+        checkAuth();
     </script>
 </body>
 
