@@ -5,8 +5,14 @@ header("X-Frame-Options: SAMEORIGIN");
 header("X-XSS-Protection: 1; mode=block");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
-header("Access-Control-Allow-Origin: http://localhost");
-header("Access-Control-Allow-Headers: Content-Type");
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = ['http://localhost', 'http://127.0.0.1'];
+if (in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: http://localhost");
+}
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS");
 header("Cache-Control: no-store, no-cache, must-revalidate");
 
@@ -81,7 +87,8 @@ function getCurrentUser($pdo) {
 }
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$action = str_replace('/api.php', '', $path);
+$scriptName = $_SERVER['SCRIPT_NAME'];
+$action = substr($path, strpos($path, $scriptName) + strlen($scriptName));
 
 if ($method === 'POST' && $action === '/signup') {
     $input = json_decode(file_get_contents('php://input'), true);

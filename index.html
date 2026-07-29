@@ -76,7 +76,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Username</th>
-                                <th>Password (6-digit)</th>
                                 <th>Role</th>
                                 <th>Created</th>
                                 <th>Actions</th>
@@ -90,18 +89,22 @@
         </div>
 
         <!-- Search / Filter Bar by Date Range -->
-        <div class="filter-bar">
-            <span>ស្វែងរកតាមកាលបរិច្ឆេទ៖</span>
-            <div class="filter-group">
-                <label for="filter-start-date">ចាប់ពីថ្ងៃ៖</label>
-                <input type="text" id="filter-start-date" placeholder="ឧ. 30-06-26 ឬ 2026-07-24" maxlength="20">
-            </div>
-            <div class="filter-group">
-                <label for="filter-end-date">ដល់ថ្ងៃ៖</label>
-                <input type="text" id="filter-end-date" placeholder="ឧ. 30-06-26 ឬ 2026-07-24" maxlength="20">
-            </div>
-            <button class="btn-clear">បង្ហាញទាំងអស់ (Reset)</button>
-        </div>
+<div class="filter-bar">
+             <span>ស្វែងរកតាមកាលបរិច្ឆេទ៖</span>
+             <div class="filter-group">
+                 <label for="filter-start-date">ចាប់ពីថ្ងៃ៖</label>
+                 <input type="text" id="filter-start-date" placeholder="ឧ. 30-06-26 ឬ 2026-07-24" maxlength="20">
+             </div>
+             <div class="filter-group">
+                 <label for="filter-end-date">ដល់ថ្ងៃ៖</label>
+                 <input type="text" id="filter-end-date" placeholder="ឧ. 30-06-26 ឬ 2026-07-24" maxlength="20">
+             </div>
+             <div class="filter-group">
+                 <label for="filter-username">អ្នកប្រើប្រាស់៖</label>
+                 <input type="text" id="filter-username" placeholder="ស្វែងរកតាមឈ្មោះ" maxlength="100">
+             </div>
+             <button class="btn-clear">បង្ហាញទាំងអស់ (Reset)</button>
+         </div>
 
         <!-- Summary Metrics Box Display -->
         <div class="dashboard-grid">
@@ -184,6 +187,7 @@
                             <tr>
                                 <th>កាលបរិច្ឆេទ</th>
                                 <th>បរិយាយ</th>
+                                <th>អ្នកបន្ថែម</th>
                                 <th>ក្រុម</th>
                                 <th>ប្រភេទ</th>
                                 <th>ចំនួនទឹកប្រាក់</th>
@@ -222,9 +226,10 @@
         const expenseKhrEl = document.getElementById('expense-khr');
         const expenseUsdEl = document.getElementById('expense-usd');
 
-        const tableRowsEl = document.getElementById('transaction-rows');
-        const startDateInput = document.getElementById('filter-start-date');
-        const endDateInput = document.getElementById('filter-end-date');
+const tableRowsEl = document.getElementById('transaction-rows');
+         const startDateInput = document.getElementById('filter-start-date');
+         const endDateInput = document.getElementById('filter-end-date');
+         const usernameInput = document.getElementById('filter-username');
 
         document.getElementById('date').valueAsDate = new Date();
 
@@ -258,13 +263,13 @@
                 allTransactions = Array.isArray(data) ? data : [];
 
                 if (data.error) {
-                    tableRowsEl.innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(data.error)}</td></tr>`;
+                    tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">${escapeHtml(data.error)}</td></tr>`;
                     return;
                 }
 
                 applyDateFilter();
             } catch (error) {
-                tableRowsEl.innerHTML = `<tr><td colspan="6" class="empty-state">កំពុងមានបញ្ហា​ក្នុងការតភ្ជាប់។ សូមព្យាយាមម្តងទៀត។</td></tr>`;
+                tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">កំពុងមានបញ្ហា​ក្នុងការតភ្ជាប់។ សូមព្យាយាមម្តងទៀត។</td></tr>`;
             } finally {
                 loader.classList.remove('active');
             }
@@ -283,6 +288,7 @@
 
         startDateInput.addEventListener('input', debouncedFilter);
         endDateInput.addEventListener('input', debouncedFilter);
+        usernameInput.addEventListener('input', debouncedFilter);
 
         document.querySelector('.btn-clear').addEventListener('click', debouncedClear);
 
@@ -311,22 +317,25 @@
             return '';
         }
 
-        function applyDateFilter() {
-            const startDate = parseInputDate(startDateInput.value);
-            const endDate = parseInputDate(endDateInput.value);
+function applyDateFilter() {
+             const startDate = parseInputDate(startDateInput.value);
+             const endDate = parseInputDate(endDateInput.value);
+             const usernameFilter = usernameInput.value.trim().toLowerCase();
 
-            const filtered = allTransactions.filter(tx => {
-                if (startDate && tx.date < startDate) return false;
-                if (endDate && tx.date > endDate) return false;
-                return true;
-            });
+             const filtered = allTransactions.filter(tx => {
+                 if (startDate && tx.date < startDate) return false;
+                 if (endDate && tx.date > endDate) return false;
+                 if (usernameFilter && !(tx.username && tx.username.toLowerCase().includes(usernameFilter))) return false;
+                 return true;
+             });
 
-            renderDashboard(filtered);
-        }
+             renderDashboard(filtered);
+         }
 
-        function clearDateFilter() {
-            startDateInput.value = '';
-            endDateInput.value = '';
+         function clearDateFilter() {
+             startDateInput.value = '';
+             endDateInput.value = '';
+             usernameInput.value = '';
             renderDashboard(allTransactions);
         }
 
@@ -335,7 +344,7 @@
             let rows = [];
 
             if (transactions.length === 0) {
-                tableRowsEl.innerHTML = `<tr><td colspan="6" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
+                tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
                 incomeKhrEl.textContent = formatCurrency(0, 'KHR');
                 expenseKhrEl.textContent = formatCurrency(0, 'KHR');
                 balanceKhrEl.textContent = formatCurrency(0, 'KHR');
@@ -360,6 +369,7 @@
                     <tr data-id="${tx.id}">
                         <td>${tx.date}</td>
                         <td><strong>${escapeHtml(tx.title)}</strong></td>
+                        <td>${escapeHtml(tx.username || '-')}</td>
                         <td>${escapeHtml(tx.category)}</td>
                         <td><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
                         <td class="${isIncome ? 'text-income' : 'text-expense'}">${formatCurrency(amt, curr)}</td>
@@ -500,6 +510,7 @@
                 const data = await response.json();
                 if (data.authenticated) {
                     showApp(data.user);
+                    fetchDashboardData();
                 } else {
                     showAuth();
                 }
@@ -639,7 +650,6 @@
                     row.innerHTML = `
                         <td>${u.id}</td>
                         <td><strong>${escapeHtml(u.username)}</strong></td>
-                        <td>••••••</td>
                         <td><span class="badge ${u.role === 'admin' ? 'income' : 'expense'}">${u.role}</span></td>
                         <td>${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
                         <td><button class="btn-edit" onclick="resetAdminPassword(${u.id}, '${escapeHtml(u.username)}')">Reset Password</button></td>
