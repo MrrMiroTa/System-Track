@@ -327,6 +327,45 @@ if ($method === 'POST') {
     exit;
 }
 
+if ($method === 'PUT' && $action === '/admin/reset-password') {
+    requireAdmin($pdo);
+    $targetUserId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+    if (!$targetUserId) {
+        echo json_encode(["error" => "User ID is required."]);
+        http_response_code(400);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $newPassword = $input['password'] ?? '';
+    if (!preg_match('/^\d{6}$/', $newPassword)) {
+        echo json_encode(["error" => "Password must be exactly 6 digits."]);
+        http_response_code(400);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE id = :id");
+        $stmt->execute([':id' => $targetUserId]);
+        if (!$stmt->fetch()) {
+            echo json_encode(["error" => "User not found."]);
+            http_response_code(404);
+            exit;
+        }
+
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+        $stmt = $pdo->prepare("UPDATE users SET password = :password WHERE id = :id");
+        $stmt->execute([':password' => $hash, ':id' => $targetUserId]);
+
+        echo json_encode(["success" => true, "message" => "Password reset successfully."]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(["error" => "Failed to reset password."]);
+    }
+    exit;
+}
+
 if ($method === 'PUT') {
     $userId = requireAuth($pdo);
     $currentUser = getCurrentUser($pdo);
@@ -354,12 +393,6 @@ if ($method === 'PUT') {
 
         if (!$isAdmin && $tx['user_id'] != $userId) {
             echo json_encode(["error" => "You can only update your own transactions."]);
-            http_response_code(403);
-            exit;
-        }
-
-        if ($tx['updated_at'] !== null) {
-            echo json_encode(["error" => "This transaction has already been updated and cannot be modified again."]);
             http_response_code(403);
             exit;
         }
@@ -454,7 +487,7 @@ if ($method === 'PUT') {
 }
 
 if ($method === 'DELETE') {
-    requireAuth($pdo);
+    $userId = requireAuth($pdo);
     $currentUser = getCurrentUser($pdo);
     $isAdmin = $currentUser && $currentUser['role'] === 'admin';
 
@@ -494,45 +527,7 @@ if ($method === 'DELETE') {
     exit;
 }
 
-if ($method === 'PUT' && $action === '/admin/reset-password') {
-    requireAdmin($pdo);
-    $targetUserId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-    if (!$targetUserId) {
-        echo json_encode(["error" => "User ID is required."]);
-        http_response_code(400);
-        exit;
-    }
-
-    $newPassword = $input['password'] ?? '';
-    if (!preg_match('/^\d{6}$/', $newPassword)) {
-        echo json_encode(["error" => "Password must be exactly 6 digits."]);
-        http_response_code(400);
-        exit;
-    }
-
-    try {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE id = :id");
-        $stmt->execute([':id' => $targetUserId]);
-        if (!$stmt->fetch()) {
-            echo json_encode(["error" => "User not found."]);
-            http_response_code(404);
-            exit;
-        }
-
-        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("UPDATE users SET password = :password WHERE id = :id");
-        $stmt->execute([':password' => $hash, ':id' => $targetUserId]);
-
-        echo json_encode(["success" => true, "message" => "Password reset successfully."]);
-    } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(["error" => "Failed to reset password."]);
-    }
-    exit;
-}
-
-http_response_code(404);
+    http_response_code(404);
 echo json_encode(["error" => "Not found."]);
 exit;
 ?>

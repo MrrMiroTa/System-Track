@@ -61,7 +61,7 @@
             </div>
             <div class="header-actions">
                 
-                <button class="btn-export" onclick="window.print()">បោះពុម្ភរបាយការណ៍ជា PDF (Export PDF)</button>
+                <button class="btn-export" onclick="openPdfReport()">បោះពុម្ភរបាយការណ៍ PDF</button>
                 <span id="user-badge" class="user-badge"></span>
                 <button class="btn-logout" onclick="doLogout()">Logout</button>
             </div>
@@ -77,7 +77,6 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Username</th>
-                                <th>password</th>
                                 <th>Role</th>
                                 <th>Created</th>
                                 <th>Actions</th>
@@ -193,7 +192,7 @@
                                 <!-- <th>ក្រុម</th> -->
                                 <th>ប្រភេទ</th>
                                 <th>ចំនួនទឹកប្រាក់</th>
-                                <th>ប្រវត្តិ</th>
+                                <th>សកម្មភាព</th>
                             </tr>
                         </thead>
                         <tbody id="transaction-rows">
@@ -375,9 +374,7 @@ function applyDateFilter() {
                      
                         <td><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
                         <td class="${isIncome ? 'text-income' : 'text-expense'}">${formatCurrency(amt, curr)}</td>
-                        <td>${tx.updated_at === null
-                        ? `<button class="btn-edit" onclick="enableEdit(${tx.id})">កែសម្រួល</button>`
-                        : '<span class="disabled-text">បានកែសម្រួលរួចហើយ</span>'}</td>
+                        <td><button class="btn-dot" onclick="openActionModal(${tx.id})">⋯</button></td>
                     </tr>
                 `);
             });
@@ -391,6 +388,52 @@ function applyDateFilter() {
             incomeUsdEl.textContent = formatCurrency(incUsd, 'USD');
             expenseUsdEl.textContent = formatCurrency(expUsd, 'USD');
             balanceUsdEl.textContent = formatCurrency(incUsd - expUsd, 'USD');
+        }
+
+        function showAlert(message, type) {
+            type = type || 'error';
+            const icon = type === 'success' ? '✓' : type === 'warning' ? '⚠' : '✕';
+            const overlay = document.createElement('div');
+            overlay.className = 'custom-alert-overlay';
+            overlay.innerHTML = '<div class="custom-alert-card"><div class="custom-alert-header ' + type + '"><span class="alert-icon">' + icon + '</span><h4>' + (type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : 'Error') + '</h4></div><div class="custom-alert-body">' + escapeHtml(message) + '</div><div class="custom-alert-footer"><button class="btn-ok" onclick="this.closest(\'.custom-alert-overlay\').remove()">OK</button></div></div>';
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) overlay.remove();
+            });
+        }
+
+        function showConfirm(message) {
+            return new Promise(function(resolve) {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-confirm-overlay';
+                overlay.innerHTML = '<div class="custom-confirm-card"><div class="custom-confirm-body">' + escapeHtml(message) + '</div><div class="custom-confirm-footer"><button class="btn-confirm-no">No</button><button class="btn-confirm-yes">Yes</button></div></div>';
+                document.body.appendChild(overlay);
+                overlay.querySelector('.btn-confirm-no').addEventListener('click', function() { overlay.remove(); resolve(false); });
+                overlay.querySelector('.btn-confirm-yes').addEventListener('click', function() { overlay.remove(); resolve(true); });
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) { overlay.remove(); resolve(false); }
+                });
+            });
+        }
+
+        function showPrompt(title, message) {
+            return new Promise(function(resolve) {
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-confirm-overlay';
+                overlay.innerHTML = '<div class="custom-confirm-card"><div class="custom-confirm-header" style="padding:1rem 1.25rem;border-bottom:1px solid var(--border)"><h4 style="font-size:0.9rem;font-weight:700">' + escapeHtml(title) + '</h4></div><div class="custom-confirm-body"><p>' + escapeHtml(message) + '</p><input type="text" class="edit-input" id="prompt-input" style="width:100%;margin-top:0.5rem;" placeholder="Enter password"></div><div class="custom-confirm-footer"><button class="btn-refirm-no">Cancel</button><button class="btn-confirm-yes">OK</button></div></div>';
+                document.body.appendChild(overlay);
+                const input = overlay.querySelector('#prompt-input');
+                input.focus();
+                overlay.querySelector('.btn-refirm-no').addEventListener('click', function() { overlay.remove(); resolve(null); });
+                overlay.querySelector('.btn-confirm-yes').addEventListener('click', function() { resolve({ value: input.value }); });
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) { overlay.remove(); resolve(null); }
+                });
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { resolve({ value: input.value }); }
+                    if (e.key === 'Escape') { overlay.remove(); resolve(null); }
+                });
+            });
         }
 
         form.addEventListener('submit', async (e) => {
@@ -424,7 +467,7 @@ function applyDateFilter() {
                     document.getElementById('date').valueAsDate = new Date();
                     fetchDashboardData();
                 } else {
-                    alert(result.error || "Failed to save records.");
+                    showAlert(result.error || "Failed to save records.");
                 }
             } catch (error) {
                 console.error("Transmission writing fault encountered:", error);
@@ -435,54 +478,35 @@ function applyDateFilter() {
         });
 
         function escapeHtml(str) {
+            if (typeof str !== 'string') str = String(str);
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
         function enableEdit(id) {
-            const row = document.querySelector(`tr[data-id="${id}"]`);
-            const tx = allTransactions.find(t => t.id === id);
+            const row = document.querySelector('tr[data-id="' + id + '"]');
+            const tx = allTransactions.find(function(t) { return t.id === id; });
             if (!row || !tx) return;
 
-            row.innerHTML = `
-                <td class="edit-cell"><input type="date" class="edit-input" id="edit-date-${id}" value="${tx.date}"></td>
-                <td class="edit-cell"><input type="text" class="edit-input" id="edit-title-${id}" value="${escapeHtml(tx.title)}"></td>
-                <td class="edit-cell"><input type="text" class="edit-input" id="edit-category-${id}" value="${escapeHtml(tx.category)}"></td>
-                <td class="edit-cell">
-                    <select class="edit-select" id="edit-type-${id}">
-                        <option value="income" ${tx.type === 'income' ? 'selected' : ''}>ចំណូល</option>
-                        <option value="expense" ${tx.type === 'expense' ? 'selected' : ''}>ចំណាយ</option>
-                    </select>
-                </td>
-                <td class="edit-cell">
-                    <div class="edit-amount-group">
-                        <input type="text" class="edit-input" id="edit-amount-${id}" step="any" value="${tx.amount}">
-                        <select class="edit-select" id="edit-currency-${id}">
-                            <option value="KHR" ${tx.currency === 'KHR' ? 'selected' : ''}>៛</option>
-                            <option value="USD" ${tx.currency === 'USD' ? 'selected' : ''}>$</option>
-                        </select>
-                    </div>
-                </td>
-                <td class="edit-cell">
-                    <div class="edit-actions">
-                        <button class="btn-save" onclick="saveEdit(${id})">រក្សាទុក</button>
-                        <button class="btn-cancel" onclick="cancelEdit()">បោះបង់</button>
-                    </div>
-                </td>
-            `;
+            row.innerHTML = '<td class="edit-cell"><input type="date" class="edit-input" id="edit-date-' + id + '" value="' + tx.date + '"></td>' +
+                '<td class="edit-cell"><input type="text" class="edit-input" id="edit-title-' + id + '" value="' + escapeHtml(tx.title) + '"></td>' +
+                '<td class="edit-cell"><input type="text" class="edit-input" id="edit-category-' + id + '" value="' + escapeHtml(tx.category) + '"></td>' +
+                '<td class="edit-cell"><select class="edit-select" id="edit-type-' + id + '"><option value="income"' + (tx.type === 'income' ? ' selected' : '') + '>ចំណូល</option><option value="expense"' + (tx.type === 'expense' ? ' selected' : '') + '>ចំណាយ</option></select></td>' +
+                '<td class="edit-cell"><div class="edit-amount-group"><input type="text" class="edit-input" id="edit-amount-' + id + '" step="any" value="' + tx.amount + '"><select class="edit-select" id="edit-currency-' + id + '"><option value="KHR"' + (tx.currency === 'KHR' ? ' selected' : '') + '>៛</option><option value="USD"' + (tx.currency === 'USD' ? ' selected' : '') + '>$</option></select></div></td>' +
+                '<td class="edit-cell"><div class="edit-actions"><button class="btn-save" onclick="saveEdit(' + id + ')">រក្សាទុក</button><button class="btn-cancel" onclick="cancelEdit()">បោះបង់</button></div></td>';
         }
 
         async function saveEdit(id) {
             const payload = {
-                title: document.getElementById(`edit-title-${id}`).value,
-                amount: document.getElementById(`edit-amount-${id}`).value,
-                currency: document.getElementById(`edit-currency-${id}`).value,
-                type: document.getElementById(`edit-type-${id}`).value,
-                category: document.getElementById(`edit-category-${id}`).value,
-                date: document.getElementById(`edit-date-${id}`).value
+                title: document.getElementById('edit-title-' + id).value,
+                amount: document.getElementById('edit-amount-' + id).value,
+                currency: document.getElementById('edit-currency-' + id).value,
+                type: document.getElementById('edit-type-' + id).value,
+                category: document.getElementById('edit-category-' + id).value,
+                date: document.getElementById('edit-date-' + id).value
             };
 
             try {
-                const response = await fetch(`${API_URL}?id=${id}`, {
+                const response = await fetch(API_URL + '?id=' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json; charset=UTF-8' },
                     body: JSON.stringify(payload)
@@ -492,12 +516,12 @@ function applyDateFilter() {
                 if (result.success) {
                     fetchDashboardData();
                 } else {
-                    alert(result.error || "Failed to update transaction.");
+                    showAlert(result.error || "Failed to update transaction.");
                     cancelEdit();
                 }
             } catch (error) {
                 console.error("Update failed:", error);
-                alert("Update failed. Please try again.");
+                showAlert("Update failed. Please try again.");
                 cancelEdit();
             }
         }
@@ -664,13 +688,15 @@ function applyDateFilter() {
         }
 
         async function resetAdminPassword(userId, username) {
-            const newPassword = prompt(`Reset password for "${username}" to a new 6-digit password:`);
-            if (newPassword === null) return;
+            const result = await showPrompt('Reset password', 'Enter a new 6-digit password for "' + username + '":');
+            if (result === null) return;
+            const newPassword = result.value;
             if (!/^\d{6}$/.test(newPassword)) {
-                alert('Password must be exactly 6 digits.');
+                showAlert('Password must be exactly 6 digits.', 'warning');
                 return;
             }
-            if (!confirm(`Set password for "${username}" to "${newPassword}"?`)) return;
+            const confirmed = await showConfirm('Set password for "' + username + '" to "' + newPassword + '"?');
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`${API_URL}/admin/reset-password?id=${userId}`, {
@@ -680,21 +706,100 @@ function applyDateFilter() {
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('Password reset successfully.');
+                    showAlert('Password reset successfully.', 'success');
                 } else {
-                    alert(data.error || 'Failed to reset password.');
+                    showAlert(data.error || 'Failed to reset password.');
                 }
             } catch (error) {
-                alert('Failed to reset password. Please try again.');
+                showAlert('Failed to reset password. Please try again.');
             }
         }
 
-        if (document.querySelector('.btn-clear')) {
-            document.querySelector('.btn-clear').addEventListener('click', debouncedClear);
+        async function confirmDelete(id) {
+            const confirmed = await showConfirm('តើលំហាត់លុបប្រតិបត្តិការនេះ?');
+            if (!confirmed) return;
+            try {
+                const response = await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (result.success) {
+                    fetchDashboardData();
+                } else {
+                    showAlert(result.error || 'Failed to delete transaction.');
+                }
+            } catch (error) {
+                console.error('Delete failed:', error);
+                showAlert('Delete failed. Please try again.');
+            }
         }
+
+        function openActionModal(id) {
+            actionModalTargetId = id;
+            const modal = document.getElementById('action-modal');
+            modal.style.display = 'flex';
+        }
+
+        function closeActionModal() {
+            const modal = document.getElementById('action-modal');
+            modal.style.display = 'none';
+            actionModalTargetId = null;
+        }
+
+        let actionModalTargetId = null;
+
+        function handleModalEdit() {
+            var id = actionModalTargetId;
+            closeActionModal();
+            if (id !== null) {
+                enableEdit(id);
+            }
+        }
+
+        function handleModalDelete() {
+            var id = actionModalTargetId;
+            closeActionModal();
+            if (id !== null) {
+                confirmDelete(id);
+            }
+        }
+
+        function openPdfReport() {
+            window.open('pdf.php', '_blank');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal = document.getElementById('action-modal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeActionModal();
+                    }
+                });
+            }
+        });
 
         checkAuth();
     </script>
+
+    <!-- Action Modal -->
+    <div id="action-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>សកម្មភាព</h3>
+                <button class="modal-close" onclick="closeActionModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <button class="modal-action-btn modal-edit" onclick="handleModalEdit()">
+                    <span class="modal-icon">✎</span>
+                    <span>កែសម្រួល</span>
+                </button>
+                <button class="modal-action-btn modal-delete" onclick="handleModalDelete()">
+                    <span class="modal-icon">✕</span>
+                    <span>លុប</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
