@@ -60,8 +60,9 @@
                 <p class="subtitle">តាមដានចំណូល និង ចំណាយប្រចាំថ្ងៃ</p>
             </div>
             <div class="header-actions">
-                <span id="user-badge" class="user-badge"></span>
+                
                 <button class="btn-export" onclick="window.print()">បោះពុម្ភរបាយការណ៍ជា PDF (Export PDF)</button>
+                <span id="user-badge" class="user-badge"></span>
                 <button class="btn-logout" onclick="doLogout()">Logout</button>
             </div>
         </header>
@@ -76,6 +77,7 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Username</th>
+                                <th>password</th>
                                 <th>Role</th>
                                 <th>Created</th>
                                 <th>Actions</th>
@@ -171,7 +173,7 @@
                         <label for="date">កាលបរិច្ឆេទ</label>
                         <input type="date" id="date" required>
                     </div>
-                    <button type="submit" class="btn-submit">រក្សាទុកទិន្នន័យ (Save)</button>
+                    <button type="submit" class="btn-submit">រក្សាទុកទិន្នន័យ (Save)</button>​
                 </form>
             </div>
 
@@ -188,7 +190,7 @@
                                 <th>កាលបរិច្ឆេទ</th>
                                 <th>បរិយាយ</th>
                                 <th>អ្នកបន្ថែម</th>
-                                <th>ក្រុម</th>
+                                <!-- <th>ក្រុម</th> -->
                                 <th>ប្រភេទ</th>
                                 <th>ចំនួនទឹកប្រាក់</th>
                                 <th>ប្រវត្តិ</th>
@@ -370,7 +372,7 @@ function applyDateFilter() {
                         <td>${tx.date}</td>
                         <td><strong>${escapeHtml(tx.title)}</strong></td>
                         <td>${escapeHtml(tx.username || '-')}</td>
-                        <td>${escapeHtml(tx.category)}</td>
+                     
                         <td><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
                         <td class="${isIncome ? 'text-income' : 'text-expense'}">${formatCurrency(amt, curr)}</td>
                         <td>${tx.updated_at === null
@@ -648,7 +650,7 @@ function applyDateFilter() {
                 users.forEach(u => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${u.id}</td>
+                        <td>${escapeHtml(u.id)}</td>
                         <td><strong>${escapeHtml(u.username)}</strong></td>
                         <td><span class="badge ${u.role === 'admin' ? 'income' : 'expense'}">${u.role}</span></td>
                         <td>${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>

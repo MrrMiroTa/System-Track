@@ -1,0 +1,10 @@
+AddDefaultCharset UTF-8
+
+<IfModule mod_mime.c>
+    AddCharset UTF-8 .php .html .css .js .json
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set Content-Type "text/html; charset=UTF-8" "expr=%{CONTENT_TYPE} =~ m#^text/html#"
+    Header set Content-Type "application/json; charset=UTF-8" "expr=%{CONTENT_TYPE} =~ m#^application/json#"
+</IfModule>

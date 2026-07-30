@@ -18,6 +18,7 @@ header("Cache-Control: no-store, no-cache, must-revalidate");
 
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
+ini_set('default_charset', 'UTF-8');
 
 session_start();
 
@@ -55,6 +56,16 @@ function isValidDate($date) {
 
 function sanitizeString($str) {
     return trim(strip_tags($str));
+}
+
+function normalizeKhmerDigits($value) {
+    $map = [
+        '០' => '0', '១' => '1', '២' => '2', '៣' => '3', '៤' => '4',
+        '៥' => '5', '៦' => '6', '៧' => '7', '៨' => '8', '៩' => '9',
+        '៰' => '0', '៱' => '1', '៲' => '2', '៳' => '3', '៴' => '4',
+        '៵' => '5', '៶' => '6', '៷' => '7', '៸' => '8', '៹' => '9'
+    ];
+    return strtr($value, $map);
 }
 
 function requireAuth($pdo) {
@@ -253,11 +264,11 @@ if ($method === 'POST') {
     }
 
     $title = sanitizeString($input['title']);
-    $amount = $input['amount'];
+    $amount = normalizeKhmerDigits($input['amount']);
     $currency = strtoupper(sanitizeString($input['currency']));
     $type = sanitizeString($input['type']);
     $category = sanitizeString($input['category']);
-    $date = sanitizeString($input['date']);
+    $date = normalizeKhmerDigits($input['date']);
 
     if (!isValidAmount($amount)) {
         echo json_encode(["error" => "Invalid amount. Must be greater than 0."]);
@@ -368,13 +379,14 @@ if ($method === 'PUT') {
         }
 
         if (isset($input['amount'])) {
-            if (!isValidAmount($input['amount'])) {
+            $amount = normalizeKhmerDigits($input['amount']);
+            if (!isValidAmount($amount)) {
                 echo json_encode(["error" => "Invalid amount. Must be greater than 0."]);
                 http_response_code(400);
                 exit;
             }
             $fields[] = "amount = :amount";
-            $params[':amount'] = $input['amount'];
+            $params[':amount'] = $amount;
         }
 
         if (isset($input['currency'])) {
@@ -411,7 +423,7 @@ if ($method === 'PUT') {
         }
 
         if (isset($input['date'])) {
-            $date = sanitizeString($input['date']);
+            $date = normalizeKhmerDigits($input['date']);
             if (!isValidDate($date)) {
                 echo json_encode(["error" => "Invalid date format. Use YYYY-MM-DD."]);
                 http_response_code(400);
@@ -482,14 +494,9 @@ if ($method === 'DELETE') {
     exit;
 }
 
-http_response_code(404);
-echo json_encode(["error" => "Not found."]);
-exit;
-
 if ($method === 'PUT' && $action === '/admin/reset-password') {
     requireAdmin($pdo);
     $targetUserId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-    $input = json_decode(file_get_contents('php://input'), true);
 
     if (!$targetUserId) {
         echo json_encode(["error" => "User ID is required."]);
@@ -527,4 +534,5 @@ if ($method === 'PUT' && $action === '/admin/reset-password') {
 
 http_response_code(404);
 echo json_encode(["error" => "Not found."]);
+exit;
 ?>

@@ -17,7 +17,7 @@
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
     --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
     --shadow-lg: 0 10px 30px rgba(0,0,0,0.1);
-    --font: 'Khmer OS Battambang', 'Siemreap', 'Segoe UI', system-ui, sans-serif;
+    --font: 'Khmer OS Battambang', 'Siemreap', 'Time New Roman', system-ui, sans-serif;
 }
 
 *, *::before, *::after {
