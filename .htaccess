@@ -2,9 +2,33 @@ AddDefaultCharset UTF-8
 
 <IfModule mod_mime.c>
     AddCharset UTF-8 .php .html .css .js .json
+    AddType text/css .css
 </IfModule>
 
 <IfModule mod_headers.c>
-    Header set Content-Type "text/html; charset=UTF-8" "expr=%{CONTENT_TYPE} =~ m#^text/html#"
-    Header set Content-Type "application/json; charset=UTF-8" "expr=%{CONTENT_TYPE} =~ m#^application/json#"
+    <FilesMatch "\.(css)$">
+        Header set Content-Type "text/css; charset=UTF-8"
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(js)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(png|jpg|jpeg|gif|svg|ico|webp)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
 </IfModule>

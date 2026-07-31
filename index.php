@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយ - Payment Tracker</title>
     <link rel="icon" href="uzita.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 
 <body>
@@ -177,30 +177,35 @@
             </div>
 
             <!-- Ledger Record Presentation Component -->
-            <div class="table-container">
-                <div class="loader-wrapper" id="table-loader">
-                    <div class="spinner"></div>
-                    <p>កំពុងទាញយកទិន្នន័យ...</p>
-                </div>
-                <div class="table-scroll">
-                    <table id="transactions-table">
-                        <thead>
-                            <tr>
-                                <th>កាលបរិច្ឆេទ</th>
-                                <th>បរិយាយ</th>
-                                <th>អ្នកបន្ថែម</th>
-                                <!-- <th>ក្រុម</th> -->
-                                <th>ប្រភេទ</th>
-                                <th>ចំនួនទឹកប្រាក់</th>
-                                <th>សកម្មភាព</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transaction-rows">
-                            <!-- Content loaded dynamically from database -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<div class="table-container">
+                 <div class="loader-wrapper" id="table-loader">
+                     <div class="spinner"></div>
+                     <p>កំពុងទាញយកទិន្នន័យ...</p>
+                 </div>
+                 <div class="table-scroll">
+                     <table id="transactions-table">
+                         <thead>
+                             <tr>
+                                 <th>កាលបរិច្ឆេទ</th>
+                                 <th>បរិយាយ</th>
+                                 <th>អ្នកបន្ថែម</th>
+                                 <!-- <th>ក្រុម</th> -->
+                                 <th>ប្រភេទ</th>
+                                 <th>ចំនួនទឹកប្រាក់</th>
+                                 <th>សកម្មភាព</th>
+                             </tr>
+                         </thead>
+                         <tbody id="transaction-rows">
+                             <!-- Content loaded dynamically from database -->
+                         </tbody>
+                     </table>
+                 </div>
+                 <div class="pagination" id="pagination">
+                     <button class="btn-page" id="btn-prev" onclick="changePage(-1)">‹ Prev</button>
+                     <span class="page-info" id="page-info"></span>
+                     <button class="btn-page" id="btn-next" onclick="changePage(1)">Next ›</button>
+                 </div>
+             </div>
         </div>
 
         <!-- Footer -->
@@ -216,6 +221,9 @@
     <script>
         const API_URL = 'api.php';
         let allTransactions = [];
+        let currentFilteredTransactions = [];
+        let currentPage = 1;
+        const rowsPerPage = 10;
 
         const form = document.getElementById('transaction-form');
 
@@ -246,6 +254,12 @@ const tableRowsEl = document.getElementById('transaction-rows');
                     style: 'currency', currency: 'USD'
                 }).format(value);
             }
+        }
+
+        function formatDateTime(isoString) {
+            if (!isoString) return '';
+            var d = isoString.split(/[- :]/);
+            return d[2] + '-' + d[1] + '-' + d[0].slice(-2) + ' ' + d[3] + ':' + d[4];
         }
 
         async function fetchDashboardData() {
@@ -321,66 +335,77 @@ const tableRowsEl = document.getElementById('transaction-rows');
         }
 
 function applyDateFilter() {
-             const startDate = parseInputDate(startDateInput.value);
-             const endDate = parseInputDate(endDateInput.value);
-             const usernameFilter = usernameInput.value.trim().toLowerCase();
+              const startDate = parseInputDate(startDateInput.value);
+              const endDate = parseInputDate(endDateInput.value);
+              const usernameFilter = usernameInput.value.trim().toLowerCase();
 
-             const filtered = allTransactions.filter(tx => {
-                 if (startDate && tx.date < startDate) return false;
-                 if (endDate && tx.date > endDate) return false;
-                 if (usernameFilter && !(tx.username && tx.username.toLowerCase().includes(usernameFilter))) return false;
-                 return true;
-             });
+              currentFilteredTransactions = allTransactions.filter(tx => {
+                  if (startDate && tx.date < startDate) return false;
+                  if (endDate && tx.date > endDate) return false;
+                  if (usernameFilter && !(tx.username && tx.username.toLowerCase().includes(usernameFilter))) return false;
+                  return true;
+              });
 
-             renderDashboard(filtered);
-         }
+              currentPage = 1;
+              renderDashboard(currentFilteredTransactions);
+          }
 
-         function clearDateFilter() {
-             startDateInput.value = '';
-             endDateInput.value = '';
-             usernameInput.value = '';
-            renderDashboard(allTransactions);
+          function clearDateFilter() {
+              startDateInput.value = '';
+              endDateInput.value = '';
+              usernameInput.value = '';
+              currentFilteredTransactions = allTransactions;
+              currentPage = 1;
+              renderDashboard(allTransactions);
+          }
+
+        function changePage(delta) {
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            renderDashboard(currentFilteredTransactions);
         }
 
         function renderDashboard(transactions) {
             let incKhr = 0, expKhr = 0, incUsd = 0, expUsd = 0;
-            let rows = [];
-
-            if (transactions.length === 0) {
-                tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
-                incomeKhrEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'KHR') + '</span>';
-                expenseKhrEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'KHR') + '</span>';
-                balanceKhrEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'KHR') + '</span>';
-                incomeUsdEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'USD') + '</span>';
-                expenseUsdEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'USD') + '</span>';
-                balanceUsdEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'USD') + '</span>';
-                return;
-            }
 
             transactions.forEach(tx => {
                 const amt = parseFloat(tx.amount);
                 const isIncome = tx.type === 'income';
                 const curr = tx.currency || 'KHR';
-
                 if (curr === 'KHR') {
                     if (isIncome) incKhr += amt; else expKhr += amt;
                 } else {
                     if (isIncome) incUsd += amt; else expUsd += amt;
                 }
-
-                rows.push(`
-                    <tr data-id="${tx.id}">
-                        <td data-label="កាលបរិច្ឆេទ">${tx.date}</td>
-                        <td data-label="បរិយាយ"><strong>${escapeHtml(tx.title)}</strong></td>
-                        <td data-label="អ្នកបន្ថែម">${escapeHtml(tx.username || '-')}</td>
-                        <td data-label="ប្រភេទ"><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
-                        <td data-label="ចំនួនទឹកប្រាក់" class="${isIncome ? 'text-income' : 'text-expense'}" translate="no">${formatCurrency(amt, curr)}</td>
-                        <td data-label="សកម្មភាព"><button class="btn-dot" onclick="openActionModal(${tx.id})">⋯</button></td>
-                    </tr>
-                `);
             });
 
-            tableRowsEl.innerHTML = rows.join('');
+            const totalPages = Math.max(1, Math.ceil(transactions.length / rowsPerPage));
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageTransactions = transactions.slice(start, end);
+
+            if (pageTransactions.length === 0) {
+                tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
+            } else {
+                let rows = [];
+                pageTransactions.forEach(tx => {
+                    const amt = parseFloat(tx.amount);
+                    const isIncome = tx.type === 'income';
+                    const curr = tx.currency || 'KHR';
+                    rows.push(`
+                        <tr data-id="${tx.id}">
+                            <td data-label="កាលបរិច្ឆេទ">${formatDateTime(tx.created_at)}</td>
+                            <td data-label="បរិយាយ"><strong>${escapeHtml(tx.title)}</strong></td>
+                            <td data-label="អ្នកបន្ថែម">${escapeHtml(tx.username || '-')}</td>
+                            <td data-label="ប្រភេទ"><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
+                            <td data-label="ចំនួនទឹកប្រាក់" class="${isIncome ? 'text-income' : 'text-expense'}" translate="no">${formatCurrency(amt, curr)}</td>
+                            <td data-label="សកម្មភាព"><button class="btn-dot" onclick="openActionModal(${tx.id})">⋯</button></td>
+                        </tr>
+                    `);
+                });
+                tableRowsEl.innerHTML = rows.join('');
+            }
 
             incomeKhrEl.innerHTML = '<span translate="no">' + formatCurrency(incKhr, 'KHR') + '</span>';
             expenseKhrEl.innerHTML = '<span translate="no">' + formatCurrency(expKhr, 'KHR') + '</span>';
@@ -389,6 +414,10 @@ function applyDateFilter() {
             incomeUsdEl.innerHTML = '<span translate="no">' + formatCurrency(incUsd, 'USD') + '</span>';
             expenseUsdEl.innerHTML = '<span translate="no">' + formatCurrency(expUsd, 'USD') + '</span>';
             balanceUsdEl.innerHTML = '<span translate="no">' + formatCurrency(incUsd - expUsd, 'USD') + '</span>';
+
+            document.getElementById('page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+            document.getElementById('btn-prev').disabled = currentPage <= 1;
+            document.getElementById('btn-next').disabled = currentPage >= totalPages;
         }
 
         function showAlert(message, type) {

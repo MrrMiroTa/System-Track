@@ -19,6 +19,7 @@ header("Cache-Control: no-store, no-cache, must-revalidate");
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 ini_set('default_charset', 'UTF-8');
+date_default_timezone_set('Asia/Ho_Chi_Minh');
 
 session_start();
 
@@ -31,6 +32,7 @@ try {
     $pdo = new PDO("mysql:host=$host;dbname=$db_name;charset=utf8mb4", $admin_user, $admin_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdo->exec("SET time_zone = '+07:00'");
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(["error" => "Database connection failed."]);
@@ -307,7 +309,8 @@ if ($method === 'POST') {
     }
 
     try {
-        $sql = "INSERT INTO transactions (user_id, title, amount, currency, type, category, date) VALUES (:user_id, :title, :amount, :currency, :type, :category, :date)";
+        $createdAt = date('Y-m-d H:i:s');
+        $sql = "INSERT INTO transactions (user_id, title, amount, currency, type, category, date, created_at) VALUES (:user_id, :title, :amount, :currency, :type, :category, :date, :created_at)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
             ':user_id' => $userId,
@@ -316,7 +319,8 @@ if ($method === 'POST') {
             ':currency' => $currency,
             ':type' => $type,
             ':category' => $category,
-            ':date' => $date
+            ':date' => $date,
+            ':created_at' => $createdAt
         ]);
 
         echo json_encode(["success" => true, "message" => "Transaction added successfully.", "id" => (int)$pdo->lastInsertId()]);
@@ -472,7 +476,9 @@ if ($method === 'PUT') {
             exit;
         }
 
-        $fields[] = "updated_at = CURRENT_TIMESTAMP";
+        $updatedAt = date('Y-m-d H:i:s');
+        $params[':updated_at'] = $updatedAt;
+        $fields[] = "updated_at = :updated_at";
         $sql = "UPDATE transactions SET " . implode(', ', $fields) . " WHERE id = :id";
 
         $stmt = $pdo->prepare($sql);
