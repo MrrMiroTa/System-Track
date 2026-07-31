@@ -236,9 +236,11 @@ const tableRowsEl = document.getElementById('transaction-rows');
 
         function formatCurrency(value, currency) {
             if (currency === 'KHR') {
-                return new Intl.NumberFormat('km-KH', {
-                    style: 'currency', currency: 'KHR', minimumFractionDigits: 0
-                }).format(value).replace('KHR', '៛');
+                const num = Math.round(value);
+                return new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(num) + ' ៛';
             } else {
                 return new Intl.NumberFormat('en-US', {
                     style: 'currency', currency: 'USD'
@@ -346,12 +348,12 @@ function applyDateFilter() {
 
             if (transactions.length === 0) {
                 tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
-                incomeKhrEl.textContent = formatCurrency(0, 'KHR');
-                expenseKhrEl.textContent = formatCurrency(0, 'KHR');
-                balanceKhrEl.textContent = formatCurrency(0, 'KHR');
-                incomeUsdEl.textContent = formatCurrency(0, 'USD');
-                expenseUsdEl.textContent = formatCurrency(0, 'USD');
-                balanceUsdEl.textContent = formatCurrency(0, 'USD');
+                incomeKhrEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'KHR') + '</span>';
+                expenseKhrEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'KHR') + '</span>';
+                balanceKhrEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'KHR') + '</span>';
+                incomeUsdEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'USD') + '</span>';
+                expenseUsdEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'USD') + '</span>';
+                balanceUsdEl.innerHTML = '<span translate="no">' + formatCurrency(0, 'USD') + '</span>';
                 return;
             }
 
@@ -368,26 +370,25 @@ function applyDateFilter() {
 
                 rows.push(`
                     <tr data-id="${tx.id}">
-                        <td>${tx.date}</td>
-                        <td><strong>${escapeHtml(tx.title)}</strong></td>
-                        <td>${escapeHtml(tx.username || '-')}</td>
-                     
-                        <td><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
-                        <td class="${isIncome ? 'text-income' : 'text-expense'}">${formatCurrency(amt, curr)}</td>
-                        <td><button class="btn-dot" onclick="openActionModal(${tx.id})">⋯</button></td>
+                        <td data-label="កាលបរិច្ឆេទ">${tx.date}</td>
+                        <td data-label="បរិយាយ"><strong>${escapeHtml(tx.title)}</strong></td>
+                        <td data-label="អ្នកបន្ថែម">${escapeHtml(tx.username || '-')}</td>
+                        <td data-label="ប្រភេទ"><span class="badge ${tx.type}">${isIncome ? 'ចំណូល' : 'ចំណាយ'}</span></td>
+                        <td data-label="ចំនួនទឹកប្រាក់" class="${isIncome ? 'text-income' : 'text-expense'}" translate="no">${formatCurrency(amt, curr)}</td>
+                        <td data-label="សកម្មភាព"><button class="btn-dot" onclick="openActionModal(${tx.id})">⋯</button></td>
                     </tr>
                 `);
             });
 
             tableRowsEl.innerHTML = rows.join('');
 
-            incomeKhrEl.textContent = formatCurrency(incKhr, 'KHR');
-            expenseKhrEl.textContent = formatCurrency(expKhr, 'KHR');
-            balanceKhrEl.textContent = formatCurrency(incKhr - expKhr, 'KHR');
+            incomeKhrEl.innerHTML = '<span translate="no">' + formatCurrency(incKhr, 'KHR') + '</span>';
+            expenseKhrEl.innerHTML = '<span translate="no">' + formatCurrency(expKhr, 'KHR') + '</span>';
+            balanceKhrEl.innerHTML = '<span translate="no">' + formatCurrency(incKhr - expKhr, 'KHR') + '</span>';
 
-            incomeUsdEl.textContent = formatCurrency(incUsd, 'USD');
-            expenseUsdEl.textContent = formatCurrency(expUsd, 'USD');
-            balanceUsdEl.textContent = formatCurrency(incUsd - expUsd, 'USD');
+            incomeUsdEl.innerHTML = '<span translate="no">' + formatCurrency(incUsd, 'USD') + '</span>';
+            expenseUsdEl.innerHTML = '<span translate="no">' + formatCurrency(expUsd, 'USD') + '</span>';
+            balanceUsdEl.innerHTML = '<span translate="no">' + formatCurrency(incUsd - expUsd, 'USD') + '</span>';
         }
 
         function showAlert(message, type) {
@@ -487,12 +488,12 @@ function applyDateFilter() {
             const tx = allTransactions.find(function(t) { return t.id === id; });
             if (!row || !tx) return;
 
-            row.innerHTML = '<td class="edit-cell"><input type="date" class="edit-input" id="edit-date-' + id + '" value="' + tx.date + '"></td>' +
-                '<td class="edit-cell"><input type="text" class="edit-input" id="edit-title-' + id + '" value="' + escapeHtml(tx.title) + '"></td>' +
-                '<td class="edit-cell"><input type="text" class="edit-input" id="edit-category-' + id + '" value="' + escapeHtml(tx.category) + '"></td>' +
-                '<td class="edit-cell"><select class="edit-select" id="edit-type-' + id + '"><option value="income"' + (tx.type === 'income' ? ' selected' : '') + '>ចំណូល</option><option value="expense"' + (tx.type === 'expense' ? ' selected' : '') + '>ចំណាយ</option></select></td>' +
-                '<td class="edit-cell"><div class="edit-amount-group"><input type="text" class="edit-input" id="edit-amount-' + id + '" step="any" value="' + tx.amount + '"><select class="edit-select" id="edit-currency-' + id + '"><option value="KHR"' + (tx.currency === 'KHR' ? ' selected' : '') + '>៛</option><option value="USD"' + (tx.currency === 'USD' ? ' selected' : '') + '>$</option></select></div></td>' +
-                '<td class="edit-cell"><div class="edit-actions"><button class="btn-save" onclick="saveEdit(' + id + ')">រក្សាទុក</button><button class="btn-cancel" onclick="cancelEdit()">បោះបង់</button></div></td>';
+            row.innerHTML = '<td class="edit-cell" data-label="កាលបរិច្ឆេទ"><input type="date" class="edit-input" id="edit-date-' + id + '" value="' + tx.date + '"></td>' +
+                '<td class="edit-cell" data-label="បរិយាយ"><input type="text" class="edit-input" id="edit-title-' + id + '" value="' + escapeHtml(tx.title) + '"></td>' +
+                '<td class="edit-cell" data-label="ក្រុម"><input type="text" class="edit-input" id="edit-category-' + id + '" value="' + escapeHtml(tx.category) + '"></td>' +
+                '<td class="edit-cell" data-label="ប្រភេទ"><select class="edit-select" id="edit-type-' + id + '"><option value="income"' + (tx.type === 'income' ? ' selected' : '') + '>ចំណូល</option><option value="expense"' + (tx.type === 'expense' ? ' selected' : '') + '>ចំណាយ</option></select></td>' +
+                '<td class="edit-cell" data-label="ចំនួនទឹកប្រាក់"><div class="edit-amount-group"><input type="text" class="edit-input" id="edit-amount-' + id + '" step="any" value="' + tx.amount + '"><select class="edit-select" id="edit-currency-' + id + '"><option value="KHR"' + (tx.currency === 'KHR' ? ' selected' : '') + '>៛</option><option value="USD"' + (tx.currency === 'USD' ? ' selected' : '') + '>$</option></select></div></td>' +
+                '<td class="edit-cell" data-label="សកម្មភាព"><div class="edit-actions"><button class="btn-save" onclick="saveEdit(' + id + ')">រក្សាទុក</button><button class="btn-cancel" onclick="cancelEdit()">បោះបង់</button></div></td>';
         }
 
         async function saveEdit(id) {
@@ -674,11 +675,11 @@ function applyDateFilter() {
                 users.forEach(u => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${escapeHtml(u.id)}</td>
-                        <td><strong>${escapeHtml(u.username)}</strong></td>
-                        <td><span class="badge ${u.role === 'admin' ? 'income' : 'expense'}">${u.role}</span></td>
-                        <td>${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
-                        <td><button class="btn-edit" onclick="resetAdminPassword(${u.id}, '${escapeHtml(u.username)}')">Reset Password</button></td>
+                        <td data-label="ID">${escapeHtml(u.id)}</td>
+                        <td data-label="Username"><strong>${escapeHtml(u.username)}</strong></td>
+                        <td data-label="Role"><span class="badge ${u.role === 'admin' ? 'income' : 'expense'}">${u.role}</span></td>
+                        <td data-label="Created">${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
+                        <td data-label="Actions"><button class="btn-edit" onclick="resetAdminPassword(${u.id}, '${escapeHtml(u.username)}')">Reset Password</button></td>
                     `;
                     tbody.appendChild(row);
                 });
