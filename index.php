@@ -6,7 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ប្រព័ន្ធគ្រប់គ្រងចំណូលចំណាយ - Payment Tracker</title>
     <link rel="icon" href="uzita.png">
-    <link rel="stylesheet" href="style.css?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=4">
 </head>
 
 <body>
@@ -60,12 +63,14 @@
                 <p class="subtitle">តាមដានចំណូល និង ចំណាយប្រចាំថ្ងៃ</p>
             </div>
             <div class="header-actions">
-                
                 <button class="btn-export" onclick="openPdfReport()">បោះពុម្ភរបាយការណ៍ PDF</button>
-                <span id="user-badge" class="user-badge"></span>
+                <span id="user-badge" class="user-badge" style="cursor:pointer;" onclick="openProfile()" title="View profile"></span>
                 <button class="btn-logout" onclick="doLogout()">Logout</button>
             </div>
         </header>
+
+        <!-- Mobile FAB -->
+        <button id="fab-add" class="fab" style="display:none;" onclick="openMobileForm()">+</button>
 
         <!-- Admin Panel -->
         <div id="admin-panel" class="admin-panel" style="display:none;">
@@ -110,31 +115,19 @@
         <!-- Summary Metrics Box Display -->
         <div class="dashboard-grid">
             <div class="card balance">
-                <h3>សមតុល្យសរុប (Total Balance)</h3>
-                <div class="multi-currency-row"><span>KHR (រៀល):</span>
-                    <div class="amount" id="balance-khr">0 ៛</div>
-                </div>
-                <div class="multi-currency-row"><span>USD (ដុល្លារ):</span>
-                    <div class="amount" id="balance-usd">$0.00</div>
-                </div>
+                <h3>💰 សមតុល្យសរុប (Total Balance)</h3>
+                <div class="multi-currency-row"><span>KHR (រៀល)</span><div class="amount" id="balance-khr">0 ៛</div></div>
+                <div class="multi-currency-row"><span>USD (ដុល្លារ)</span><div class="amount" id="balance-usd">$0.00</div></div>
             </div>
             <div class="card income">
-                <h3>ចំណូលសរុប (Total Income)</h3>
-                <div class="multi-currency-row"><span>KHR (រៀល):</span>
-                    <div class="amount" id="income-khr">0 ៛</div>
-                </div>
-                <div class="multi-currency-row"><span>USD (ដុល្លារ):</span>
-                    <div class="amount" id="income-usd">$0.00</div>
-                </div>
+                <h3>📈 ចំណូលសរុប (Total Income)</h3>
+                <div class="multi-currency-row"><span>KHR (រៀល)</span><div class="amount" id="income-khr">0 ៛</div></div>
+                <div class="multi-currency-row"><span>USD (ដុល្លារ)</span><div class="amount" id="income-usd">$0.00</div></div>
             </div>
             <div class="card expense">
-                <h3>ចំណាយសរុប (Total Expense)</h3>
-                <div class="multi-currency-row"><span>KHR (រៀល):</span>
-                    <div class="amount" id="expense-khr">0 ៛</div>
-                </div>
-                <div class="multi-currency-row"><span>USD (ដុល្លារ):</span>
-                    <div class="amount" id="expense-usd">$0.00</div>
-                </div>
+                <h3>📉 ចំណាយសរុប (Total Expense)</h3>
+                <div class="multi-currency-row"><span>KHR (រៀល)</span><div class="amount" id="expense-khr">0 ៛</div></div>
+                <div class="multi-currency-row"><span>USD (ដុល្លារ)</span><div class="amount" id="expense-usd">$0.00</div></div>
             </div>
         </div>
 
@@ -216,6 +209,50 @@
                 <span class="footer-copy">&copy; 2026 Payment Tracker. All rights reserved.</span>
             </div>
         </footer>
+    </div>
+
+    <!-- Mobile Transaction Form Modal -->
+    <div id="mobile-form-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-card modal-card-wide">
+            <div class="modal-header">
+                <h3>បន្ថែមប្រតិបត្តិការថ្មី</h3>
+                <button class="modal-close" onclick="closeMobileForm()">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="mobile-transaction-form">
+                    <div class="form-group">
+                        <label for="mobile-title">បរិយាយ / ឈ្មោះប្រតិបត្តិការ</label>
+                        <input type="text" id="mobile-title" required placeholder="ឧ. បើកប្រាក់ខែ, ទិញម្ហូប...">
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile-amount">ចំនួនទឹកប្រាក់</label>
+                        <div class="amount-input-group">
+                            <input type="text" id="mobile-amount" step="any" required placeholder="0.00">
+                            <select id="mobile-currency" required>
+                                <option value="KHR">រៀល (៛)</option>
+                                <option value="USD">ដុល្លារ ($)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile-type">ប្រភេទប្រតិបត្តិការ</label>
+                        <select id="mobile-type" required>
+                            <option value="income">ចំណូល (Income)</option>
+                            <option value="expense">ចំណាយ (Expense)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile-category">ប្រភេទក្រុម (Category)</label>
+                        <input type="text" id="mobile-category" required placeholder="ឧ. ម្ហូបអាហារ, ផ្ទះបាយ...">
+                    </div>
+                    <div class="form-group">
+                        <label for="mobile-date">កាលបរិច្ឆេទ</label>
+                        <input type="date" id="mobile-date" required>
+                    </div>
+                    <button type="submit" class="btn-submit">រក្សាទុកទិន្នន័យ (Save)</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -386,7 +423,7 @@ function applyDateFilter() {
             const pageTransactions = transactions.slice(start, end);
 
             if (pageTransactions.length === 0) {
-                tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state">មិនមានទិន្នន័យក្នុងកាលបរិច្ឆេទនេះទេ។</td></tr>`;
+                tableRowsEl.innerHTML = `<tr><td colspan="7" class="empty-state"><span class="empty-state-icon">📭</span>មិនមានទិន្នន័យទេ។</td></tr>`;
             } else {
                 let rows = [];
                 pageTransactions.forEach(tx => {
@@ -698,9 +735,25 @@ function applyDateFilter() {
         async function fetchAdminUsers() {
             try {
                 const response = await fetch(`${API_URL}/admin/users`);
+                if (!response.ok) {
+                    const text = await response.text();
+                    let message = 'Failed to fetch users.';
+                    try {
+                        const err = JSON.parse(text);
+                        if (err.error) message = err.error;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
                 const users = await response.json();
+                if (!Array.isArray(users)) {
+                    throw new Error('Unexpected response format.');
+                }
                 const tbody = document.getElementById('admin-users-body');
                 tbody.innerHTML = '';
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><span class="empty-state-icon">👥</span>មិ�មានអ្នកប្រើប្រាស់ទេ។</td></tr>';
+                    return;
+                }
                 users.forEach(u => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
@@ -714,6 +767,7 @@ function applyDateFilter() {
                 });
             } catch (error) {
                 console.error('Failed to fetch users:', error);
+                showAlert('មិនអាចទាញយកថ្នាក់អ្នកប្រើប្រាស់។ សូមព្យាយាមម្តងទៀត។', 'error');
             }
         }
 
@@ -796,13 +850,71 @@ function applyDateFilter() {
             window.open('pdf.php', '_blank');
         }
 
+        function openProfile() {
+            window.open('profile.php', '_blank');
+        }
+
+        function openMobileForm() {
+            const modal = document.getElementById('mobile-form-modal');
+            modal.style.display = 'flex';
+            document.getElementById('mobile-date').valueAsDate = new Date();
+        }
+
+        function closeMobileForm() {
+            document.getElementById('mobile-form-modal').style.display = 'none';
+        }
+
+        document.getElementById('mobile-transaction-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = e.target.querySelector('.btn-submit');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'កំពុងរក្សាទុក...';
+
+            const payload = {
+                title: document.getElementById('mobile-title').value,
+                amount: document.getElementById('mobile-amount').value,
+                currency: document.getElementById('mobile-currency').value,
+                type: document.getElementById('mobile-type').value,
+                category: document.getElementById('mobile-category').value,
+                date: document.getElementById('mobile-date').value
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    e.target.reset();
+                    document.getElementById('mobile-date').valueAsDate = new Date();
+                    closeMobileForm();
+                    fetchDashboardData();
+                    showAlert('Transaction added successfully.', 'success');
+                } else {
+                    showAlert(result.error || "Failed to save records.");
+                }
+            } catch (error) {
+                console.error("Transmission writing fault encountered:", error);
+                showAlert("Connection failed. Please try again.");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+
+        document.getElementById('mobile-form-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeMobileForm();
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
-            var modal = document.getElementById('action-modal');
-            if (modal) {
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) {
-                        closeActionModal();
-                    }
+            var actionModal = document.getElementById('action-modal');
+            if (actionModal) {
+                actionModal.addEventListener('click', function(e) {
+                    if (e.target === actionModal) closeActionModal();
                 });
             }
         });

@@ -224,6 +224,64 @@ if ($method === 'GET') {
         exit;
     }
 
+    if ($action === '/user/profile-status') {
+        $userId = requireAuth($pdo);
+        $currentUser = getCurrentUser($pdo);
+        $isAdmin = $currentUser && $currentUser['role'] === 'admin';
+
+        if ($isAdmin) {
+            echo json_encode([
+                'canChangeUsername' => true,
+                'canChangePassword' => true,
+                'isAdmin' => true
+            ]);
+            exit;
+        }
+
+        $stmt = $pdo->prepare("SELECT created_at, last_username_change_at, last_password_change_at FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            echo json_encode(["error" => "User not found."]);
+            http_response_code(404);
+            exit;
+        }
+
+        $now = new DateTime();
+        $usernameLockUntil = null;
+        $passwordLockUntil = null;
+
+        if ($user && $user['last_username_change_at']) {
+            $usernameLockUntil = (new DateTime($user['last_username_change_at']))->modify('+7 days');
+        }
+
+        if ($user && $user['last_password_change_at']) {
+            $passwordLockUntil = (new DateTime($user['last_password_change_at']))->modify('+7 days');
+        }
+
+        $canChangeUsername = $usernameLockUntil === null || $now >= $usernameLockUntil;
+        $canChangePassword = $passwordLockUntil === null || $now >= $passwordLockUntil;
+
+        $result = [
+            'canChangeUsername' => $canChangeUsername,
+            'canChangePassword' => $canChangePassword,
+            'isAdmin' => false
+        ];
+
+        if (!$canChangeUsername) {
+            $interval = $now->diff($usernameLockUntil);
+            $result['usernameLockedFor'] = $interval->format('%a days %h hours %i minutes');
+        }
+        if (!$canChangePassword) {
+            $interval = $now->diff($passwordLockUntil);
+            $result['passwordLockedFor'] = $interval->format('%a days %h hours %i minutes');
+        }
+
+        echo json_encode($result);
+        exit;
+    }
+
     try {
         if ($isAdmin) {
             $stmt = $pdo->query("SELECT t.id, t.user_id, u.username, t.title, t.amount, t.currency, t.type, t.category, t.date, t.created_at, t.updated_at FROM transactions t JOIN users u ON t.user_id = u.id ORDER BY t.date DESC, t.id DESC");
@@ -367,6 +425,163 @@ if ($method === 'PUT' && $action === '/admin/reset-password') {
         http_response_code(500);
         echo json_encode(["error" => "Failed to reset password."]);
     }
+    exit;
+}
+
+if ($method === 'PUT' && $action === '/user/profile') {
+    $userId = requireAuth($pdo);
+    $currentUser = getCurrentUser($pdo);
+    $isAdmin = $currentUser && $currentUser['role'] === 'admin';
+
+    if ($isAdmin) {
+        echo json_encode(["success" => true, "message" => "Admin can always change profile."]);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $newUsername = isset($input['username']) ? sanitizeString($input['username']) : '';
+    $currentPassword = isset($input['current_password']) ? $input['current_password'] : '';
+
+    if (empty($newUsername)) {
+        echo json_encode(["error" => "Username is required."]);
+        http_response_code(400);
+        exit;
+    }
+
+    if (mb_strlen($newUsername) < 3 || mb_strlen($newUsername) > 100) {
+        echo json_encode(["error" => "Username must be between 3 and 100 characters."]);
+        http_response_code(400);
+        exit;
+    }
+
+    if (empty($currentPassword)) {
+        echo json_encode(["error" => "Current password is required."]);
+        http_response_code(400);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    $storedUser = $stmt->fetch();
+
+    if (!$storedUser || !password_verify($currentPassword, $storedUser['password'])) {
+        echo json_encode(["error" => "Incorrect current password."]);
+        http_response_code(403);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = :username AND id != :id");
+    $stmt->execute([':username' => $newUsername, ':id' => $userId]);
+    if ($stmt->fetch()) {
+        echo json_encode(["error" => "Username already taken."]);
+        http_response_code(409);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT created_at, last_username_change_at FROM users WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    $user = $stmt->fetch();
+
+    $now = new DateTime();
+    $lockUntil = $user['last_username_change_at']
+        ? (new DateTime($user['last_username_change_at']))->modify('+7 days')
+        : null;
+
+    if ($lockUntil !== null && $now < $lockUntil) {
+        $interval = $now->diff($lockUntil);
+        echo json_encode(["error" => "You can only change username once every 7 days. Please wait " . $interval->format('%a days %h hours %i minutes')]);
+        http_response_code(403);
+        exit;
+    }
+
+    $updateFields = "username = :username";
+    $updateParams = [':username' => $newUsername, ':id' => $userId];
+
+    try {
+        $stmt = $pdo->prepare("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_username_change_at TIMESTAMP NULL DEFAULT NULL AFTER created_at");
+        $stmt->execute();
+        $updateFields .= ", last_username_change_at = NOW()";
+    } catch (PDOException $e) {
+        $updateFields .= ", last_username_change_at = NOW()";
+    }
+
+    $sql = "UPDATE users SET " . $updateFields . " WHERE id = :id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($updateParams);
+
+    echo json_encode(["success" => true, "message" => "Username changed successfully."]);
+    exit;
+}
+
+if ($method === 'PUT' && $action === '/user/password') {
+    $userId = requireAuth($pdo);
+    $currentUser = getCurrentUser($pdo);
+    $isAdmin = $currentUser && $currentUser['role'] === 'admin';
+
+    if ($isAdmin) {
+        echo json_encode(["success" => true, "message" => "Admin can always change password."]);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true);
+    $newPassword = isset($input['password']) ? $input['password'] : '';
+    $currentPassword = isset($input['current_password']) ? $input['current_password'] : '';
+
+    if (!preg_match('/^\d{6}$/', $newPassword)) {
+        echo json_encode(["error" => "Password must be exactly 6 digits."]);
+        http_response_code(400);
+        exit;
+    }
+
+    if (empty($currentPassword)) {
+        echo json_encode(["error" => "Current password is required."]);
+        http_response_code(400);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    $storedUser = $stmt->fetch();
+
+    if (!$storedUser || !password_verify($currentPassword, $storedUser['password'])) {
+        echo json_encode(["error" => "Incorrect current password."]);
+        http_response_code(403);
+        exit;
+    }
+
+    $stmt = $pdo->prepare("SELECT created_at, last_password_change_at FROM users WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    $user = $stmt->fetch();
+
+    $now = new DateTime();
+    $lockUntil = $user['last_password_change_at']
+        ? (new DateTime($user['last_password_change_at']))->modify('+7 days')
+        : null;
+
+    if ($lockUntil !== null && $now < $lockUntil) {
+        $interval = $now->diff($lockUntil);
+        echo json_encode(["error" => "You can only change password once every 7 days. Please wait " . $interval->format('%a days %h hours %i minutes')]);
+        http_response_code(403);
+        exit;
+    }
+
+    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $updateFields = "password = :password";
+    $updateParams = [':password' => $hash, ':id' => $userId];
+
+    try {
+        $stmt = $pdo->prepare("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_password_change_at TIMESTAMP NULL DEFAULT NULL AFTER last_username_change_at");
+        $stmt->execute();
+        $updateFields .= ", last_password_change_at = NOW()";
+    } catch (PDOException $e) {
+        $updateFields .= ", last_password_change_at = NOW()";
+    }
+
+    $sql = "UPDATE users SET " . $updateFields . " WHERE id = :id";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($updateParams);
+
+    echo json_encode(["success" => true, "message" => "Password changed successfully."]);
     exit;
 }
 

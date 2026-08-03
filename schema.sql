@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_username_change_at TIMESTAMP NULL DEFAULT NULL,
+    last_password_change_at TIMESTAMP NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -36,3 +38,6 @@ INSERT IGNORE INTO transactions (user_id, title, amount, type, category, date, c
 (1, 'Web Design Freelance', 1200.00, 'income', 'Freelance', '2026-07-15', 'KHR'),
 (1, 'Monthly Rent', 500.00, 'expense', 'Housing', '2026-07-01', 'KHR'),
 (1, 'Groceries', 75.50, 'expense', 'Food', '2026-07-18', 'KHR');
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_username_change_at TIMESTAMP NULL DEFAULT NULL AFTER created_at;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_password_change_at TIMESTAMP NULL DEFAULT NULL AFTER last_username_change_at;
