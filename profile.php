@@ -417,7 +417,8 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
             const icon = type === 'success' ? '✓' : type === 'warning' ? '⚠' : '✕';
             const overlay = document.createElement('div');
             overlay.className = 'custom-alert-overlay';
-            overlay.innerHTML = '<div class="custom-alert-card"><div class="custom-alert-header ' + type + '"><span class="alert-icon">' + icon + '</span><h4>' + (type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : 'Error') + '</h4></div><div class="custom-alert-body">' + escapeHtml(message) + '</div><div class="custom-alert-footer"><button class="btn-ok" onclick="this.closest(\'.custom-alert-overlay\').remove()">OK</button></div></div>';
+            const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
+            overlay.innerHTML = '<div class="custom-alert-card"><div class="custom-alert-header ' + type + '"><span class="alert-icon">' + icon + '</span><h4>' + (type === 'success' ? 'Success' : type === 'warning' ? 'Warning' : 'Error') + '</h4></div><div class="custom-alert-body">' + safeMessage + '</div><div class="custom-alert-footer"><button class="btn-ok" onclick="this.closest(\'.custom-alert-overlay\').remove()">OK</button></div></div>';
             document.body.appendChild(overlay);
             overlay.addEventListener('click', function(e) {
                 if (e.target === overlay) overlay.remove();
@@ -557,21 +558,24 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
                     return;
                 }
 
-                usernameBtn.style.display = data.canChangeUsername ? 'inline-flex' : 'none';
-                passwordBtn.style.display = data.canChangePassword ? 'inline-flex' : 'none';
+                usernameBtn.style.display = 'inline-flex';
+                passwordBtn.style.display = 'inline-flex';
 
-                if (!data.canChangeUsername || !data.canChangePassword) {
-                    const msg = [];
-                    if (!data.canChangeUsername) msg.push('Username locked: ' + data.usernameLockedFor + ' remaining');
-                    if (!data.canChangePassword) msg.push('Password locked: ' + data.passwordLockedFor + ' remaining');
-                    showAlert(msg.join('<br>'), 'warning');
-                }
+                usernameBtn.dataset.locked = data.canChangeUsername ? 'false' : 'true';
+                passwordBtn.dataset.locked = data.canChangePassword ? 'false' : 'true';
+                if (!data.canChangeUsername) usernameBtn.dataset.lockMessage = 'Username locked: ' + data.usernameLockedFor + ' remaining';
+                if (!data.canChangePassword) passwordBtn.dataset.lockMessage = 'Password locked: ' + data.passwordLockedFor + ' remaining';
             } catch (error) {
                 console.error('Failed to fetch profile status:', error);
             }
         }
 
         document.getElementById('btn-change-username').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-change-username');
+            if (btn.dataset.locked === 'true') {
+                showAlert(btn.dataset.lockMessage || 'Username is currently locked.', 'warning');
+                return;
+            }
             const result = await showUsernameChangeModal();
             if (result === null) return;
             const currentPassword = result.currentPassword.trim();
@@ -597,6 +601,11 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
         });
 
         document.getElementById('btn-change-password').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-change-password');
+            if (btn.dataset.locked === 'true') {
+                showAlert(btn.dataset.lockMessage || 'Password is currently locked.', 'warning');
+                return;
+            }
             const result = await showPasswordChangeModal();
             if (result === null) return;
             const currentPassword = result.currentPassword.trim();
