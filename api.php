@@ -99,6 +99,18 @@ function getCurrentUser($pdo) {
     return $stmt->fetch();
 }
 
+function hasKhrTransactions($pdo, $userId) {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as cnt FROM transactions
+        WHERE user_id = :user_id AND currency = 'KHR'
+    ");
+    $stmt->execute([':user_id' => $userId]);
+    $row = $stmt->fetch();
+    return ($row && (int)$row['cnt'] > 0);
+}
+
+const EXCHANGE_RATE_KHR_TO_USD = 4100;
+
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $scriptName = $_SERVER['SCRIPT_NAME'];
 $action = substr($path, strpos($path, $scriptName) + strlen($scriptName));
@@ -282,6 +294,47 @@ if ($method === 'GET') {
         exit;
     }
 
+    if ($action === '/user/monthly-summary') {
+        $userId = requireAuth($pdo);
+        try {
+            $stmt = $pdo->prepare("
+                SELECT 
+                    DATE_FORMAT(date, '%Y-%m') as month,
+                    COALESCE(SUM(CASE WHEN type = 'income' AND currency = 'KHR' THEN amount ELSE 0 END), 0) as income_khr,
+                    COALESCE(SUM(CASE WHEN type = 'expense' AND currency = 'KHR' THEN amount ELSE 0 END), 0) as expense_khr,
+                    COALESCE(SUM(CASE WHEN type = 'income' AND currency = 'USD' THEN amount ELSE 0 END), 0) as income_usd,
+                    COALESCE(SUM(CASE WHEN type = 'expense' AND currency = 'USD' THEN amount ELSE 0 END), 0) as expense_usd,
+                    COUNT(*) as transaction_count
+                FROM transactions
+                WHERE user_id = :user_id
+                GROUP BY DATE_FORMAT(date, '%Y-%m')
+                ORDER BY month DESC
+            ");
+            $stmt->execute([':user_id' => $userId]);
+            $monthlyData = $stmt->fetchAll();
+
+            $result = [];
+            foreach ($monthlyData as $row) {
+                $result[] = [
+                    'month' => $row['month'],
+                    'income_khr' => (float)$row['income_khr'],
+                    'expense_khr' => (float)$row['expense_khr'],
+                    'balance_khr' => (float)$row['income_khr'] - (float)$row['expense_khr'],
+                    'income_usd' => (float)$row['income_usd'],
+                    'expense_usd' => (float)$row['expense_usd'],
+                    'balance_usd' => (float)$row['income_usd'] - (float)$row['expense_usd'],
+                    'transaction_count' => (int)$row['transaction_count']
+                ];
+            }
+
+            echo json_encode($result);
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(["error" => "Database error."]);
+        }
+        exit;
+    }
+
     try {
         if ($isAdmin) {
             $stmt = $pdo->query("SELECT t.id, t.user_id, u.username, t.title, t.amount, t.currency, t.type, t.category, t.date, t.created_at, t.updated_at FROM transactions t JOIN users u ON t.user_id = u.id ORDER BY t.date DESC, t.id DESC");
@@ -364,6 +417,12 @@ if ($method === 'POST') {
         echo json_encode(["error" => "Category must be between 2 and 100 characters."]);
         http_response_code(400);
         exit;
+    }
+
+    if ($type === 'expense' && $currency === 'KHR' && !hasKhrTransactions($pdo, $userId)) {
+        $convertedUsd = (float)$amount / EXCHANGE_RATE_KHR_TO_USD;
+        $currency = 'USD';
+        $amount = number_format($convertedUsd, 2, '.', '');
     }
 
     try {

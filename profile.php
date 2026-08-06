@@ -41,13 +41,13 @@ if (!$user) {
 $userId = $user['id'];
 $isAdmin = $user['role'] === 'admin';
 
-$stmt = $pdo->prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as income, COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as expense FROM transactions WHERE user_id = :user_id");
-$stmt->execute([':user_id' => $userId]);
-$stats = $stmt->fetch();
+    $stmt = $pdo->prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(CASE WHEN type = 'income' AND currency = 'KHR' THEN amount ELSE 0 END), 0) as income_khr, COALESCE(SUM(CASE WHEN type = 'expense' AND currency = 'KHR' THEN amount ELSE 0 END), 0) as expense_khr, COALESCE(SUM(CASE WHEN type = 'income' AND currency = 'USD' THEN amount ELSE 0 END), 0) as income_usd, COALESCE(SUM(CASE WHEN type = 'expense' AND currency = 'USD' THEN amount ELSE 0 END), 0) as expense_usd FROM transactions WHERE user_id = :user_id");
+    $stmt->execute([':user_id' => $userId]);
+    $stats = $stmt->fetch();
 
-$stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM transactions WHERE user_id = :user_id");
-$stmt->execute([':user_id' => $userId]);
-$txCount = $stmt->fetch()['cnt'];
+    $stmt = $pdo->prepare("SELECT COUNT(*) as cnt FROM transactions WHERE user_id = :user_id");
+    $stmt->execute([':user_id' => $userId]);
+    $txCount = $stmt->fetch()['cnt'];
 
 $lastTx = null;
 if ($txCount > 0) {
@@ -333,6 +333,163 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
             .profile-actions .spacer { display: none; }
             .profile-actions .btn { justify-content: center; }
         }
+        .profile-card-value + .profile-card-value {
+            margin-top: 0.15rem;
+        }
+
+        .monthly-view {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .monthly-view.active {
+            display: block;
+        }
+
+        .monthly-view-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .monthly-view-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .btn-monthly-toggle {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 0.45rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: var(--font);
+        }
+
+        .btn-monthly-toggle:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-monthly-toggle.active {
+            background: var(--expense);
+        }
+
+        .btn-monthly-toggle.active:hover {
+            background: #DC2626;
+        }
+
+        .monthly-table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .monthly-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            font-size: 0.85rem;
+            min-width: 600px;
+        }
+
+        .monthly-table th {
+            background: var(--surface);
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 0.72rem;
+            padding: 0.7rem 0.85rem;
+            border-bottom: 2px solid var(--border);
+            text-align: left;
+        }
+
+        .monthly-table th:nth-child(2) {
+            text-align: center;
+        }
+
+        .monthly-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .monthly-table td:nth-child(2) {
+            text-align: center;
+        }
+
+        .monthly-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .monthly-table tbody tr:hover {
+            background: var(--surface);
+        }
+
+        .month-month {
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        .month-txns {
+            text-align: center;
+            color: var(--text-sec);
+            font-weight: 500;
+        }
+
+        .month-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+        }
+
+        .month-row .currency-primary {
+            font-weight: 600;
+        }
+
+        .month-row .currency-secondary {
+            font-size: 0.78rem;
+            color: var(--text-sec);
+            font-weight: 400;
+        }
+
+        .text-income {
+            color: var(--income);
+        }
+
+        .text-expense {
+            color: var(--expense);
+        }
+
+        .text-balance {
+            font-weight: 700;
+        }
+
+        .text-balance.positive {
+            color: var(--income);
+        }
+
+        .text-balance.negative {
+            color: var(--expense);
+        }
+
+        .monthly-empty {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -371,16 +528,20 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
                         <div class="profile-card-icon green">📈</div>
                         <div class="profile-card-label">Income</div>
                     </div>
-                    <div class="profile-card-value" style="color: var(--income);"><?php echo number_format((float)$stats['income'], 2); ?></div>
-                    <div class="profile-card-meta">Total income</div>
+                    <div class="profile-card-value" style="color: var(--income);"><?php echo number_format((float)$stats['income_khr'], 2); ?> ៛</div>
+                    <div class="profile-card-meta">KHR</div>
+                    <div class="profile-card-value" style="color: var(--income); font-size:1.1rem;"><?php echo number_format((float)$stats['income_usd'], 2); ?> $</div>
+                    <div class="profile-card-meta">USD</div>
                 </div>
                 <div class="profile-card">
                     <div class="profile-card-header">
                         <div class="profile-card-icon red">📉</div>
                         <div class="profile-card-label">Expense</div>
                     </div>
-                    <div class="profile-card-value" style="color: var(--expense);"><?php echo number_format((float)$stats['expense'], 2); ?></div>
-                    <div class="profile-card-meta">Total expense</div>
+                    <div class="profile-card-value" style="color: var(--expense);"><?php echo number_format((float)$stats['expense_khr'], 2); ?> ៛</div>
+                    <div class="profile-card-meta">KHR</div>
+                    <div class="profile-card-value" style="color: var(--expense); font-size:1.1rem;"><?php echo number_format((float)$stats['expense_usd'], 2); ?> $</div>
+                    <div class="profile-card-meta">USD</div>
                 </div>
                 <div class="profile-card">
                     <div class="profile-card-header">
@@ -398,8 +559,19 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
             <div class="profile-actions">
                 <a href="index.php" class="btn btn-secondary">← Back to Dashboard</a>
                 <button class="btn btn-secondary" onclick="window.print()">🖨 Print Profile</button>
+                <button class="btn btn-secondary" id="btn-monthly-view">📊 View by Month</button>
                 <span class="spacer"></span>
                 <button class="btn btn-danger" onclick="doLogout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="profile-section monthly-view" id="monthly-view-section">
+            <div class="monthly-view-header">
+                <h3>Monthly Breakdown</h3>
+                <button class="btn-monthly-toggle" id="btn-close-monthly">✕ Close</button>
+            </div>
+            <div id="monthly-content">
+                <div class="monthly-empty">Loading monthly data...</div>
             </div>
         </div>
     </div>
@@ -410,6 +582,20 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
         function escapeHtml(str) {
             if (typeof str !== 'string') str = String(str);
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function formatCurrency(value, currency) {
+            if (currency === 'KHR') {
+                const num = Math.round(value);
+                return new Intl.NumberFormat('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(num) + ' ៛';
+            } else {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency', currency: 'USD'
+                }).format(value);
+            }
         }
 
         function showAlert(message, type) {
@@ -631,6 +817,81 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
         });
 
         fetchProfileStatus();
+
+        const btnMonthlyView = document.getElementById('btn-monthly-view');
+        const monthlySection = document.getElementById('monthly-view-section');
+        const monthlyContent = document.getElementById('monthly-content');
+        const btnCloseMonthly = document.getElementById('btn-close-monthly');
+        let monthlyViewActive = false;
+
+        btnMonthlyView.addEventListener('click', async function() {
+            if (monthlyViewActive) {
+                monthlySection.classList.remove('active');
+                monthlyViewActive = false;
+                btnMonthlyView.classList.remove('active');
+                return;
+            }
+
+            monthlySection.classList.add('active');
+            monthlyViewActive = true;
+            btnMonthlyView.classList.add('active');
+            monthlyContent.innerHTML = '<div class="monthly-empty">Loading monthly data...</div>';
+
+            try {
+                const response = await fetch(`${API_URL}/user/monthly-summary`);
+                const data = await response.json();
+
+                if (data.error) {
+                    monthlyContent.innerHTML = '<div class="monthly-empty">' + escapeHtml(data.error) + '</div>';
+                    return;
+                }
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    monthlyContent.innerHTML = '<div class="monthly-empty">No transaction data available.</div>';
+                    return;
+                }
+
+                let rows = [];
+                rows.push('<div class="monthly-table-wrapper"><table class="monthly-table"><thead><tr>');
+                rows.push('<th>Month</th>');
+                rows.push('<th>Txns</th>');
+                rows.push('<th>Income</th>');
+                rows.push('<th>Expense</th>');
+                rows.push('<th>Balance</th>');
+                rows.push('</tr></thead><tbody>');
+
+                data.forEach(function(m) {
+                    const monthLabel = m.month.substring(5, 7) + '/' + m.month.substring(0, 4);
+                    const incomeKhr = formatCurrency(m.income_khr, 'KHR');
+                    const incomeUsd = formatCurrency(m.income_usd, 'USD');
+                    const expenseKhr = formatCurrency(m.expense_khr, 'KHR');
+                    const expenseUsd = formatCurrency(m.expense_usd, 'USD');
+                    const balanceKhrClass = m.balance_khr >= 0 ? 'positive' : 'negative';
+                    const balanceUsdClass = m.balance_usd >= 0 ? 'positive' : 'negative';
+                    const balanceKhr = formatCurrency(m.balance_khr, 'KHR');
+                    const balanceUsd = formatCurrency(m.balance_usd, 'USD');
+
+                    rows.push('<tr>');
+                    rows.push('<td class="month-month">' + escapeHtml(monthLabel) + '</td>');
+                    rows.push('<td class="month-txns">' + m.transaction_count + '</td>');
+                    rows.push('<td class="text-income"><div class="month-row"><span class="currency-primary">' + incomeKhr + '</span><span class="currency-secondary">' + incomeUsd + '</span></div></td>');
+                    rows.push('<td class="text-expense"><div class="month-row"><span class="currency-primary">' + expenseKhr + '</span><span class="currency-secondary">' + expenseUsd + '</span></div></td>');
+                    rows.push('<td class="text-balance ' + balanceKhrClass + '"><div class="month-row"><span class="currency-primary">' + balanceKhr + '</span><span class="currency-secondary ' + balanceUsdClass + '">' + balanceUsd + '</span></div></td>');
+                    rows.push('</tr>');
+                });
+
+                rows.push('</tbody></table></div>');
+                monthlyContent.innerHTML = rows.join('');
+            } catch (error) {
+                monthlyContent.innerHTML = '<div class="monthly-empty">Failed to load monthly data.</div>';
+            }
+        });
+
+        btnCloseMonthly.addEventListener('click', function() {
+            monthlySection.classList.remove('active');
+            monthlyViewActive = false;
+            btnMonthlyView.classList.remove('active');
+        });
     </script>
 </body>
 </html>

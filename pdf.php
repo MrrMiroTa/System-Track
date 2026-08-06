@@ -37,22 +37,68 @@ if ($currentUser && $currentUser['role'] === 'admin') {
     $isAdmin = true;
 }
 
+$startDate = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
+$endDate = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
+
+function isValidDate($date) {
+    $d = DateTime::createFromFormat('Y-m-d', $date);
+    return $d && $d->format('Y-m-d') === $date;
+}
+
+function parseInputDate($value) {
+    $value = trim($value);
+    if (empty($value)) return '';
+    $normalized = str_replace('/', '-', $value);
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalized)) {
+        return $normalized;
+    }
+    $parts = explode('-', $normalized);
+    if (count($parts) === 3) {
+        list($dd, $mm, $yy) = $parts;
+        if (strlen($dd) === 2 && strlen($mm) === 2 && strlen($yy) === 2) {
+            $yyyy = intval($yy) > 70 ? '19' . $yy : '20' . $yy;
+            return $yyyy . '-' . $mm . '-' . $dd;
+        }
+        if (strlen($dd) === 2 && strlen($mm) === 2 && strlen($yy) === 4) {
+            return $yy . '-' . $mm . '-' . $dd;
+        }
+    }
+    return '';
+}
+
+$whereClause = '';
+$params = [];
+if ($startDate && isValidDate(parseInputDate($startDate))) {
+    $startDate = parseInputDate($startDate);
+    $whereClause .= " AND t.date >= :start_date";
+    $params[':start_date'] = $startDate;
+}
+if ($endDate && isValidDate(parseInputDate($endDate))) {
+    $endDate = parseInputDate($endDate);
+    $whereClause .= " AND t.date <= :end_date";
+    $params[':end_date'] = $endDate;
+}
+
 if ($isAdmin) {
-    $stmt = $pdo->query("
+    $sql = "
         SELECT t.id, t.user_id, u.username, t.title, t.amount, t.currency, t.type, t.category, t.date, t.created_at, t.updated_at
         FROM transactions t
         JOIN users u ON t.user_id = u.id
+        WHERE 1=1 {$whereClause}
         ORDER BY t.date ASC, t.id ASC
-    ");
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
 } else {
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT t.id, t.user_id, u.username, t.title, t.amount, t.currency, t.type, t.category, t.date, t.created_at, t.updated_at
         FROM transactions t
         JOIN users u ON t.user_id = u.id
-        WHERE t.user_id = :user_id
+        WHERE t.user_id = :user_id {$whereClause}
         ORDER BY t.date ASC, t.id ASC
-    ");
-    $stmt->execute([':user_id' => $userId]);
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(array_merge([':user_id' => $userId], $params));
 }
 
 $transactions = $stmt->fetchAll();
@@ -444,8 +490,68 @@ function formatCurrencyUSD($value)
             border-color: #CBD5E1;
         }
 
+        /* Filter Bar */
+        .filter-bar {
+            padding: 16px 32px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #E2E8F0;
+        }
+
+        .filter-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .filter-group input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: inherit;
+            color: #1E293B;
+            background: #fff;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .filter-group input[type="date"]:focus {
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .filter-actions {
+            flex-direction: row;
+            align-items: flex-end;
+            gap: 8px;
+            padding-bottom: 2px;
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 11px;
+        }
+
         /* Print Styles */
         @media print {
+            .filter-bar {
+                display: none !important;
+            }
             body {
                 padding: 0;
                 background: #fff;
@@ -486,6 +592,24 @@ function formatCurrencyUSD($value)
             <div class="btn-group">
                 <button class="btn btn-primary" onclick="window.print()">🖨️ Print / PDF</button>
             </div>
+        </div>
+
+        <!-- Date Filter Bar -->
+        <div class="filter-bar">
+            <form method="GET" action="pdf.php" class="filter-form">
+                <div class="filter-group">
+                    <label for="start_date">ចាប់ពីថ្ងៃ៖</label>
+                    <input type="date" id="start_date" name="start_date" value="<?= htmlspecialchars($startDate) ?>">
+                </div>
+                <div class="filter-group">
+                    <label for="end_date">ដល់ថ្ងៃ៖</label>
+                    <input type="date" id="end_date" name="end_date" value="<?= htmlspecialchars($endDate) ?>">
+                </div>
+                <div class="filter-group filter-actions">
+                    <button type="submit" class="btn btn-primary btn-sm">🔍 Filter</button>
+                    <a href="pdf.php" class="btn btn-secondary btn-sm">↺ Reset</a>
+                </div>
+            </form>
         </div>
 
         <div class="report-header">
