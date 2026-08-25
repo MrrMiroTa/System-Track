@@ -29,3 +29,19 @@ INSERT IGNORE INTO transactions (user_id, title, amount, type, category, date, c
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_username_change_at TIMESTAMP NULL DEFAULT NULL AFTER created_at;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_password_change_at TIMESTAMP NULL DEFAULT NULL AFTER last_username_change_at;
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    task_name VARCHAR(255) NOT NULL,
+    status ENUM('pending', 'completed') DEFAULT 'pending',
+    priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+    due_date DATE NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP NULL DEFAULT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);

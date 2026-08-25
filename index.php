@@ -851,7 +851,7 @@ function applyDateFilter() {
         }
 
         function openProfile() {
-            window.open('profile.php', '_blank');
+            window.location.href = 'profile.php';
         }
 
         function openMobileForm() {

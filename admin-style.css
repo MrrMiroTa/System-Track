@@ -1,0 +1,330 @@
+/* admin-style.css - Polished CSS Styles for Khmer Payment Tracker Admin Panel */
+@import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --primary: #0284c7;         /* Navy-Sky Blue for Khmer Modern UI */
+    --primary-dark: #0369a1;
+    --primary-light: #e0f2fe;
+    --success: #10b981;         /* Emerald Green for Approved/Income */
+    --success-light: #d1fae5;
+    --warning: #f59e0b;         /* Amber for Pending Requests */
+    --warning-light: #fef3c7;
+    --danger: #ef4444;          /* Crimson Red for Rejected/Expenses/Violations */
+    --danger-light: #fee2e2;
+    --dark: #0f172a;            /* Slate Dark */
+    --gray-light: #f8fafc;
+    --gray-border: #e2e8f0;
+    --gray-text: #64748b;
+    --white: #ffffff;
+    
+    /* Fonts & Radii */
+    --font-khmer: 'Kantumruy Pro', 'Inter', system-ui, -apple-system, sans-serif;
+    --radius-lg: 12px;
+    --radius-md: 8px;
+    --radius-sm: 4px;
+    --transition: all 0.2s ease-in-out;
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+    --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+}
+
+/* Base Styles */
+body {
+    font-family: var(--font-khmer);
+    background-color: #f1f5f9;
+    color: var(--dark);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* Admin Dashboard Container */
+.admin-dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Card Elements */
+.admin-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--gray-border);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    transition: var(--transition);
+}
+
+.admin-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.admin-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--gray-border);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.admin-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Grid System */
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Form Styles */
+.admin-form-group {
+    margin-bottom: 16px;
+}
+
+.admin-form-label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--dark);
+}
+
+.admin-form-control {
+    width: 100%;
+    padding: 10px 14px;
+    font-family: var(--font-khmer);
+    font-size: 0.95rem;
+    border: 1px solid var(--gray-border);
+    border-radius: var(--radius-md);
+    background-color: var(--white);
+    box-sizing: border-box;
+    transition: var(--transition);
+}
+
+.admin-form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* Buttons */
+.admin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--font-khmer);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.admin-btn-primary {
+    background-color: var(--primary);
+    color: var(--white);
+}
+
+.admin-btn-primary:hover {
+    background-color: var(--primary-dark);
+}
+
+.admin-btn-success {
+    background-color: var(--success);
+    color: var(--white);
+}
+
+.admin-btn-success:hover {
+    opacity: 0.9;
+}
+
+.admin-btn-danger {
+    background-color: var(--danger);
+    color: var(--white);
+}
+
+.admin-btn-danger:hover {
+    opacity: 0.9;
+}
+
+.admin-btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+}
+
+/* Tables styling */
+.admin-table-container {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--gray-border);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    background-color: var(--white);
+}
+
+.admin-table th {
+    background-color: var(--gray-light);
+    color: var(--dark);
+    font-weight: 700;
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--gray-border);
+    font-size: 0.9rem;
+}
+
+.admin-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--gray-border);
+    font-size: 0.95rem;
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table tbody tr:hover {
+    background-color: rgba(241, 245, 249, 0.5);
+}
+
+/* Status Badges */
+.admin-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 50px;
+    text-transform: uppercase;
+}
+
+.admin-badge-pending {
+    background-color: var(--warning-light);
+    color: var(--warning);
+}
+
+.admin-badge-approved {
+    background-color: var(--success-light);
+    color: var(--success);
+}
+
+.admin-badge-rejected {
+    background-color: var(--danger-light);
+    color: var(--danger);
+}
+
+/* Audit Log Action Types Styling */
+.log-action {
+    font-weight: 600;
+    font-size: 0.85rem;
+    font-family: 'Inter', monospace;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    display: inline-block;
+}
+
+.log-action-request {
+    background-color: var(--primary-light);
+    color: var(--primary-dark);
+}
+
+.log-action-approve {
+    background-color: var(--success-light);
+    color: var(--success);
+}
+
+.log-action-violation {
+    background-color: var(--danger-light);
+    color: var(--danger);
+    animation: pulse-border 2s infinite;
+}
+
+/* Simulated Security Key or MFA Verification UI */
+.mfa-alert-box {
+    background-color: var(--primary-light);
+    border-left: 4px solid var(--primary);
+    color: var(--primary-dark);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+/* Notifications Toast style */
+.admin-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    background-color: var(--dark);
+    color: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slide-in 0.3s ease-out;
+}
+
+/* Animations */
+@keyframes slide-in {
+    from {
+        transform: translateY(100%) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-border {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+/* Responsive adjustment */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    .admin-card {
+        padding: 16px;
+    }
+    .admin-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .admin-btn {
+        width: 100%;
+    }
+}

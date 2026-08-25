@@ -558,7 +558,8 @@ $lastActivity = $lastTx ? date('d M Y H:i', strtotime($lastTx['created_at'])) : 
             <div class="profile-section-title">Actions</div>
             <div class="profile-actions">
                 <a href="index.php" class="btn btn-secondary">← Back to Dashboard</a>
-                <button class="btn btn-secondary" onclick="window.print()">🖨 Print Profile</button>
+                <a href="todo.php" class="btn btn-secondary">📝 Todo List</a>
+                <!-- <button class="btn btn-secondary" onclick="window.print()">🖨 Print Profile</button> -->
                 <button class="btn btn-secondary" id="btn-monthly-view">📊 View by Month</button>
                 <span class="spacer"></span>
                 <button class="btn btn-danger" onclick="doLogout()">Logout</button>
